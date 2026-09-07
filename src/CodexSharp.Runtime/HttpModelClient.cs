@@ -1,9 +1,9 @@
-using System.Net.Http.Headers;
-using System.Runtime.CompilerServices;
-using System.Text;
+using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using CodexSharp.Protocol;
+using Microsoft.Extensions.AI;
+using OpenAI;
 
 namespace CodexSharp.Runtime;
 
@@ -16,21 +16,29 @@ public sealed class HttpModelClient : IModelClient
     };
 
     private readonly CodexConfig _config;
-    private readonly HttpClient _http;
+    private readonly HttpClient? _http;
+    private readonly IChatClient? _chat;
+    private readonly bool _ownsChat;
 
     public HttpModelClient(CodexConfig config, HttpClient? http = null)
     {
         _config = config;
-        _http = http ?? new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-        if (!string.IsNullOrWhiteSpace(config.Provider.ApiKey))
-        {
-            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.Provider.ApiKey);
-        }
+        _http = http;
+        _chat = null;
+        _ownsChat = true;
+    }
+
+    public HttpModelClient(CodexConfig config, IChatClient chat)
+    {
+        _config = config;
+        _http = null;
+        _chat = chat;
+        _ownsChat = false;
     }
 
     public async Task StreamAsync(ModelRequest request, Action<ModelStreamEvent> onEvent, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(_config.Provider.ApiKey))
+        if (string.IsNullOrWhiteSpace(_config.Provider.ApiKey) && _chat is null)
         {
             onEvent(ModelStreamEvent.NewStreamFailed(
                 "No API key. Set OPENAI_API_KEY, CODEXSHARP_API_KEY, or MiniMax, or write ~/.codexsharp/auth.json."));
@@ -38,297 +46,279 @@ public sealed class HttpModelClient : IModelClient
             return;
         }
 
+        IChatClient? owned = null;
+        var chat = _chat ?? (owned = CreateChatClient(_config, _http));
+
         try
         {
-            if (string.Equals(_config.Provider.WireApi, "responses", StringComparison.OrdinalIgnoreCase))
+            var messages = new List<ChatMessage>();
+            var tools = BuildTools(request, _config);
+            var options = new ChatOptions
             {
-                await StreamResponsesAsync(request, onEvent, ct);
-            }
-            else
+                ModelId = request.Model,
+                Tools = tools.Count == 0 ? null : tools,
+            };
+
+            if (IsResponses(_config))
             {
-                await StreamChatAsync(request, onEvent, ct);
+                options.Instructions = request.Instructions;
             }
+            else if (!string.IsNullOrWhiteSpace(request.Instructions))
+            {
+                messages.Add(new ChatMessage(ChatRole.System, request.Instructions));
+            }
+
+            foreach (var message in request.Messages)
+            {
+                messages.Add(ToChatMessage(message));
+            }
+
+            var calls = new Dictionary<string, (string Name, string Args)>(StringComparer.Ordinal);
+            await foreach (var update in chat.GetStreamingResponseAsync(messages, options, ct))
+            {
+                foreach (var content in update.Contents)
+                {
+                    switch (content)
+                    {
+                        case TextContent text when !string.IsNullOrEmpty(text.Text):
+                            onEvent(ModelStreamEvent.NewOutputTextDelta(text.Text));
+                            break;
+                        case TextReasoningContent reasoning when !string.IsNullOrEmpty(reasoning.Text):
+                            onEvent(ModelStreamEvent.NewReasoningDelta(reasoning.Text));
+                            break;
+                        case FunctionCallContent call:
+                            MergeCall(calls, call);
+                            break;
+                    }
+                }
+            }
+
+            foreach (var (id, call) in calls)
+            {
+                onEvent(ModelStreamEvent.NewToolCallReady(new ToolCallRequest(
+                    id,
+                    call.Name,
+                    string.IsNullOrEmpty(call.Args) ? "{}" : call.Args)));
+            }
+
+            onEvent(ModelStreamEvent.NewStreamFinished("stop"));
         }
         catch (Exception ex)
         {
             onEvent(ModelStreamEvent.NewStreamFailed(ex.Message));
             onEvent(ModelStreamEvent.NewStreamFinished("error"));
         }
+        finally
+        {
+            if (_ownsChat)
+            {
+                owned?.Dispose();
+            }
+        }
     }
 
-    private async Task StreamChatAsync(ModelRequest request, Action<ModelStreamEvent> onEvent, CancellationToken ct)
+    internal static IList<AITool> BuildTools(ModelRequest request, CodexConfig config)
     {
-        var messages = new JsonArray
+        var tools = new List<AITool>();
+        foreach (var tool in request.Tools ?? [])
         {
-            new JsonObject { ["role"] = "system", ["content"] = request.Instructions },
-        };
-
-        foreach (var message in request.Messages)
-        {
-            JsonNode content = message.Role is "user" or "developer"
-                ? ImageMessageContent.ChatContent(message.Content ?? "")
-                : JsonValue.Create(message.Content ?? "")!;
-            var node = new JsonObject { ["role"] = NormalizeRole(message.Role), ["content"] = content };
-            if (!string.IsNullOrEmpty(message.ToolCallId))
+            JsonElement schema;
+            try
             {
-                node["tool_call_id"] = message.ToolCallId;
+                schema = JsonDocument.Parse(string.IsNullOrWhiteSpace(tool.ParametersJson) ? "{}" : tool.ParametersJson).RootElement.Clone();
+            }
+            catch (JsonException)
+            {
+                schema = JsonDocument.Parse("{}").RootElement.Clone();
             }
 
-            if (!string.IsNullOrEmpty(message.Name) && message.Role == "tool")
-            {
-                node["name"] = message.Name;
-            }
-
-            if (!string.IsNullOrEmpty(message.ToolCallsJson))
-            {
-                node["tool_calls"] = JsonNode.Parse(ToOpenAiToolCalls(message.ToolCallsJson));
-            }
-
-            messages.Add(node);
+            tools.Add(AIFunctionFactory.CreateDeclaration(tool.Name, tool.Description, schema));
         }
 
-        var tools = new JsonArray();
-        foreach (var tool in request.Tools)
+        if (IsResponses(config) && FeatureFlags.IsEnabled("web_search"))
         {
-            tools.Add(new JsonObject
+            tools.Add(new HostedWebSearchTool());
+        }
+
+        return tools;
+    }
+
+    internal static ChatMessage ToChatMessage(HistoryMessage message)
+    {
+        var role = message.Role switch
+        {
+            "assistant" => ChatRole.Assistant,
+            "tool" => ChatRole.Tool,
+            "system" or "developer" => ChatRole.System,
+            _ => ChatRole.User,
+        };
+
+        if (role == ChatRole.Tool)
+        {
+            return new ChatMessage(role, [new FunctionResultContent(message.ToolCallId ?? "", message.Content)]);
+        }
+
+        var contents = new List<AIContent>();
+        if (!string.IsNullOrEmpty(message.ToolCallsJson))
+        {
+            if (!string.IsNullOrEmpty(message.Content))
             {
-                ["type"] = "function",
-                ["function"] = new JsonObject
+                contents.Add(new TextContent(message.Content));
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(message.ToolCallsJson);
+                foreach (var call in doc.RootElement.EnumerateArray())
                 {
-                    ["name"] = tool.Name,
-                    ["description"] = tool.Description,
-                    ["parameters"] = JsonNode.Parse(tool.ParametersJson) ?? new JsonObject(),
-                },
-            });
-        }
-
-        var payload = new JsonObject
-        {
-            ["model"] = request.Model,
-            ["stream"] = true,
-            ["messages"] = messages,
-            ["tools"] = tools,
-        };
-
-        using var req = new HttpRequestMessage(HttpMethod.Post, $"{_config.Provider.BaseUrl}/chat/completions")
-        {
-            Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json"),
-        };
-
-        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-        if (!resp.IsSuccessStatusCode)
-        {
-            var body = await resp.Content.ReadAsStringAsync(ct);
-            onEvent(ModelStreamEvent.NewStreamFailed($"HTTP {(int)resp.StatusCode}: {body}"));
-            onEvent(ModelStreamEvent.NewStreamFinished("error"));
-            return;
-        }
-
-        var raw = await resp.Content.ReadAsStreamAsync(ct);
-
-        var toolBuf = new Dictionary<int, (string Id, string Name, StringBuilder Args)>();
-        await foreach (var data in ReadSseAsync(raw, ct))
-        {
-            if (data is "[DONE]")
+                    var id = call.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? Ids.call() : Ids.call();
+                    var name = call.TryGetProperty("name", out var nameEl) ? nameEl.GetString() ?? "" : "";
+                    var argsJson = call.TryGetProperty("argumentsJson", out var argsEl) ? argsEl.GetString() ?? "{}" : "{}";
+                    contents.Add(new FunctionCallContent(id, name, DeserializeArgs(argsJson)));
+                }
+            }
+            catch (JsonException)
             {
-                break;
             }
 
-            using var doc = JsonDocument.Parse(data);
-            if (!doc.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+            return new ChatMessage(ChatRole.Assistant, contents);
+        }
+
+        if ((role == ChatRole.User || message.Role is "developer")
+            && ImageMessageContent.TryCollect(message.Content ?? "", out var rest, out var dataUrls)
+            && dataUrls.Count > 0)
+        {
+            if (!string.IsNullOrWhiteSpace(rest))
             {
-                continue;
+                contents.Add(new TextContent(rest.Trim()));
             }
 
-            var delta = choices[0].TryGetProperty("delta", out var d) ? d : default;
-            if (delta.ValueKind == JsonValueKind.Object && delta.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
+            foreach (var url in dataUrls)
             {
-                var text = content.GetString();
-                if (!string.IsNullOrEmpty(text))
+                if (TryDataContent(url, out var data))
                 {
-                    onEvent(ModelStreamEvent.NewOutputTextDelta(text));
+                    contents.Add(data);
                 }
             }
 
-            if (delta.ValueKind == JsonValueKind.Object && delta.TryGetProperty("tool_calls", out var toolCalls))
-            {
-                foreach (var part in toolCalls.EnumerateArray())
-                {
-                    var index = part.TryGetProperty("index", out var idx) ? idx.GetInt32() : 0;
-                    if (!toolBuf.TryGetValue(index, out var buf))
-                    {
-                        buf = ("", "", new StringBuilder());
-                    }
-
-                    var id = part.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? buf.Id : buf.Id;
-                    var name = buf.Name;
-                    if (part.TryGetProperty("function", out var fn))
-                    {
-                        if (fn.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String)
-                        {
-                            name = n.GetString() ?? name;
-                        }
-
-                        if (fn.TryGetProperty("arguments", out var a) && a.ValueKind == JsonValueKind.String)
-                        {
-                            buf.Args.Append(a.GetString());
-                        }
-                    }
-
-                    toolBuf[index] = (id, name, buf.Args);
-                }
-            }
+            return new ChatMessage(role, contents);
         }
 
-        foreach (var call in toolBuf.OrderBy(kv => kv.Key).Select(kv => kv.Value))
-        {
-            onEvent(ModelStreamEvent.NewToolCallReady(new ToolCallRequest(
-                string.IsNullOrEmpty(call.Id) ? Ids.call () : call.Id,
-                call.Name,
-                call.Args.ToString())));
-        }
-
-        onEvent(ModelStreamEvent.NewStreamFinished("stop"));
+        return new ChatMessage(role, message.Content ?? "");
     }
 
-    private async Task StreamResponsesAsync(ModelRequest request, Action<ModelStreamEvent> onEvent, CancellationToken ct)
+    private static void MergeCall(Dictionary<string, (string Name, string Args)> calls, FunctionCallContent call)
     {
-        var input = new JsonArray();
-        foreach (var message in request.Messages)
+        var id = string.IsNullOrWhiteSpace(call.CallId) ? Ids.call() : call.CallId;
+        var args = SerializeArguments(call.Arguments);
+        if (calls.TryGetValue(id, out var existing))
         {
-            JsonNode content = message.Role == "tool"
-                ? JsonValue.Create($"[tool {message.Name} {message.ToolCallId}]\n{message.Content}")!
-                : ImageMessageContent.ResponsesContent(message.Content ?? "");
-            input.Add(new JsonObject
+            var name = string.IsNullOrWhiteSpace(call.Name) ? existing.Name : call.Name;
+            if (args == "{}")
             {
-                ["role"] = NormalizeRole(message.Role) == "tool" ? "user" : NormalizeRole(message.Role),
-                ["content"] = content,
-            });
-        }
+                args = existing.Args;
+            }
 
-        var tools = new JsonArray();
-        foreach (var tool in request.Tools)
-        {
-            tools.Add(new JsonObject
-            {
-                ["type"] = "function",
-                ["name"] = tool.Name,
-                ["description"] = tool.Description,
-                ["parameters"] = JsonNode.Parse(tool.ParametersJson) ?? new JsonObject(),
-            });
-        }
-
-        if (FeatureFlags.IsEnabled("web_search"))
-        {
-            tools.Add(new JsonObject { ["type"] = "web_search" });
-        }
-
-        var payload = new JsonObject
-        {
-            ["model"] = request.Model,
-            ["instructions"] = request.Instructions,
-            ["input"] = input,
-            ["tools"] = tools,
-            ["stream"] = true,
-        };
-
-        using var req = new HttpRequestMessage(HttpMethod.Post, $"{_config.Provider.BaseUrl}/responses")
-        {
-            Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json"),
-        };
-
-        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-        if (!resp.IsSuccessStatusCode)
-        {
-            var body = await resp.Content.ReadAsStringAsync(ct);
-            onEvent(ModelStreamEvent.NewStreamFailed($"HTTP {(int)resp.StatusCode}: {body}"));
-            onEvent(ModelStreamEvent.NewStreamFinished("error"));
+            calls[id] = (name, args);
             return;
         }
 
-        var raw = await resp.Content.ReadAsStreamAsync(ct);
-
-        await foreach (var data in ReadSseAsync(raw, ct))
-        {
-            if (data is "[DONE]")
-            {
-                break;
-            }
-
-            using var doc = JsonDocument.Parse(data);
-            var root = doc.RootElement;
-            var type = root.TryGetProperty("type", out var t) ? t.GetString() : "";
-            switch (type)
-            {
-                case "response.output_text.delta":
-                    if (root.TryGetProperty("delta", out var delta) && delta.ValueKind == JsonValueKind.String)
-                    {
-                        onEvent(ModelStreamEvent.NewOutputTextDelta(delta.GetString() ?? ""));
-                    }
-                    break;
-                case "response.output_item.done":
-                    if (root.TryGetProperty("item", out var item)
-                        && item.TryGetProperty("type", out var itemType)
-                        && itemType.GetString() is "function_call")
-                    {
-                        var id = item.TryGetProperty("call_id", out var cid) ? cid.GetString() : Ids.call ();
-                        var name = item.TryGetProperty("name", out var n) ? n.GetString() : "";
-                        var args = item.TryGetProperty("arguments", out var a) ? a.GetString() : "{}";
-                        onEvent(ModelStreamEvent.NewToolCallReady(new ToolCallRequest(id ?? Ids.call (), name ?? "", args ?? "{}")));
-                    }
-                    break;
-            }
-        }
-
-        onEvent(ModelStreamEvent.NewStreamFinished("stop"));
+        calls[id] = (call.Name ?? "", args);
     }
 
-    private static string NormalizeRole(string role) =>
-        role is "developer" or "system" ? "system" : role;
-
-    private static string ToOpenAiToolCalls(string json)
+    private static string SerializeArguments(IDictionary<string, object?>? arguments)
     {
-        using var doc = JsonDocument.Parse(json);
-        var arr = new JsonArray();
-        foreach (var call in doc.RootElement.EnumerateArray())
+        if (arguments is null || arguments.Count == 0)
         {
-            arr.Add(new JsonObject
-            {
-                ["id"] = call.GetProperty("id").GetString(),
-                ["type"] = "function",
-                ["function"] = new JsonObject
-                {
-                    ["name"] = call.GetProperty("name").GetString(),
-                    ["arguments"] = call.GetProperty("argumentsJson").GetString() ?? "{}",
-                },
-            });
+            return "{}";
         }
 
-        return arr.ToJsonString();
+        return JsonSerializer.Serialize(arguments, Json);
     }
 
-    private static async IAsyncEnumerable<string> ReadSseAsync(Stream stream, [EnumeratorCancellation] CancellationToken ct)
+    private static Dictionary<string, object?> DeserializeArgs(string json)
     {
-        using var reader = new StreamReader(stream);
-        while (!ct.IsCancellationRequested)
+        try
         {
-            var line = await reader.ReadLineAsync(ct);
-            if (line is null)
-            {
-                yield break;
-            }
-
-            if (line.StartsWith("data:", StringComparison.Ordinal))
-            {
-                yield return line["data:".Length..].Trim();
-            }
-            else if (line.StartsWith('{'))
-            {
-                yield return line;
-            }
+            return JsonSerializer.Deserialize<Dictionary<string, object?>>(json, Json) ?? [];
         }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static bool TryDataContent(string url, out DataContent content)
+    {
+        content = null!;
+        if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var comma = url.IndexOf(',');
+        if (comma < 0)
+        {
+            return false;
+        }
+
+        var header = url[..comma];
+        var payload = url[(comma + 1)..];
+        var media = "application/octet-stream";
+        var colon = header.IndexOf(':');
+        if (colon >= 0)
+        {
+            var rest = header[(colon + 1)..];
+            var semi = rest.IndexOf(';');
+            media = semi >= 0 ? rest[..semi] : rest;
+        }
+
+        try
+        {
+            content = new DataContent(Convert.FromBase64String(payload), media);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsResponses(CodexConfig config) =>
+        string.Equals(config.Provider.WireApi, "responses", StringComparison.OrdinalIgnoreCase);
+
+    private static IChatClient CreateChatClient(CodexConfig config, HttpClient? http)
+    {
+        var options = new OpenAIClientOptions
+        {
+            Endpoint = EndpointOf(config.Provider.BaseUrl),
+            NetworkTimeout = TimeSpan.FromMinutes(10),
+        };
+        if (http is not null)
+        {
+            options.Transport = new HttpClientPipelineTransport(http);
+        }
+
+        var openai = new OpenAIClient(new ApiKeyCredential(config.Provider.ApiKey), options);
+        var model = string.IsNullOrWhiteSpace(config.Model) ? "gpt-4.1-mini" : config.Model;
+        if (IsResponses(config))
+        {
+#pragma warning disable OPENAI001
+            return openai.GetResponsesClient().AsIChatClient(model);
+#pragma warning restore OPENAI001
+        }
+
+        return openai.GetChatClient(model).AsIChatClient();
+    }
+
+    private static Uri EndpointOf(string? baseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            return new Uri("https://api.openai.com/v1");
+        }
+
+        return new Uri(baseUrl.Trim().TrimEnd('/'));
     }
 }
-
-
 

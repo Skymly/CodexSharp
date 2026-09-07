@@ -18,6 +18,7 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.1" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.1" />
     <PackageReference Include="Avalonia.FuncUI" Version="2.0.0" />
+    <PackageReference Include="Avalonia.FuncUI.Elmish" Version="2.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CodexSharp.Runtime\CodexSharp.Runtime.csproj" />
@@ -33,3 +34,4 @@
     <Copy SourceFiles="@(_CliOut)" DestinationFolder="$(OutputPath)%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
 </Project>
+

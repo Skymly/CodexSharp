@@ -1,5 +1,7 @@
 namespace CodexSharp.Desktop
 
+#nowarn "89"
+
 open System
 open System.IO
 open System.Diagnostics
@@ -14,6 +16,8 @@ open Avalonia.Input
 open Avalonia.Threading
 open Avalonia.Controls.ApplicationLifetimes
 open Avalonia.Platform.Storage
+open Elmish
+open Avalonia.FuncUI.Elmish.ElmishHook
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
 open Avalonia.FuncUI.Types
@@ -586,86 +590,156 @@ module MainView =
         else
             []
 
+    type private ShellModel =
+        { Screen: ScreenState
+          ApiKey: string
+          ModelDraft: string
+          SandboxRootDraft: string }
+
+    type private ShellMsg =
+        | SetScreen of ScreenState
+        | SetApiKey of string
+        | SetModelDraft of string
+        | SetSandboxRoot of string
+
+    type private Bridge<'t>(getValue: unit -> 't, setValue: 't -> unit) =
+        let instanceId = Guid.NewGuid()
+        member _.Current = getValue()
+        member _.Set(value: 't) = setValue value
+        interface IWritable<'t> with
+            member _.InstanceId = instanceId
+            member _.InstanceType = InstanceType.Source
+            member _.ValueType = typeof<'t>
+            member _.Current = getValue()
+            member _.Set value = setValue value
+            member _.Subscribe _ = { new IDisposable with member _.Dispose() = () }
+            member _.SubscribeAny _ = { new IDisposable with member _.Dispose() = () }
+            member _.Dispose() = ()
+
+    let private shellUpdate (msg: ShellMsg) (model: ShellModel) : ShellModel * Cmd<ShellMsg> =
+        match msg with
+        | SetScreen screen -> { model with Screen = screen }, Cmd.none
+        | SetApiKey value -> { model with ApiKey = value }, Cmd.none
+        | SetModelDraft value -> { model with ModelDraft = value }, Cmd.none
+        | SetSandboxRoot value -> { model with SandboxRootDraft = value }, Cmd.none
+
     let create () =
         Component(fun ctx ->
-            let apiKey = ctx.useState ""
-            let modelDraft = ctx.useState ""
-            let sandboxRootDraft = ctx.useState ""
-            let hosted = AppServerHandle.Start()
-            let session = AppServerSession(hosted.Client)
-            let state =
-                ctx.useState (
-                    { Session = session
-                      Timeline = []
-                      Threads = []
-                      Composer = ""
-                      Status = "connecting…"
-                      Header = "New thread"
-                      Busy = true
-                      ApprovalId = ""
-                      ApprovalCommand = ""
-                      Plan = ""
-                      Search = ""
-                      SearchHits = []
-                      SideNotes = "Loading…"
-                      ThreadQuery = ""
-                      QueueCount = 0
-                      Diff = ""
-                      ShowSettings = false
-                      Mentions = []
-                      Attachments = []
-                      RemoteImages = Map.empty
-                      SectionDraft = ""
-                      ShowArchived = false
-                      ShowAllThreads = false
-                      Sections = []
-                      Skills = "Loading skills…"
-                      Models = []
-                      Terminal = ""
-                      TermIn = ""
-                      TermPid = ""
-                      ShowOnboarding = false
-                      OnboardingDismissed = false
-                      ShowTrust = false
-                      TrustDismissed = false
-                      TrustTarget = ""
-                      RemoteControl = "disabled"
-                      RateLimits = ""
-                      QueueItems = []
-                      Projects = []
-                      ProjectDraft = ""
-                      SelectedProject = ""
-                      FsNote = ""
-                      UserInputId = ""
-                      UserInputPrompt = ""
-                      UserInputDraft = ""
-                      SkillRows = []
-                      WorkspaceFiles = []
-                      SlashHits = []
-                      HookRows = []
-                      FeatureRows = []
-                      ComputerUse = "notConfigured"
-                      BrowserUse = "notConfigured"
-                      PluginAvailable = []
-                      ComposerHistory = []
-                      HistoryCursor = -1
-                      ComposerDraft = ""
-                      VimMode = "insert"
-                      CommentRows = []
-                      PromptRows = []
-                      PrTitle = ""
-                      PrBody = ""
-                      MemoryNotes = []
-                      McpRows = []
-                      McpDraft = ""
-                      Toast = ""
-                      TuiVim = ""
-                      CollaborationMode = ""
-                      Personality = ""
-                      Effort = ""
-                      TuiRaw = ""
-                      TuiTitle = "" }
-                )
+            let session =
+                ctx.useState(lazy (AppServerSession(AppServerHandle.Start().Client)), false).Current.Value
+            let holder: ShellModel option ref = ctx.useState(ref None, false).Current
+            let init () =
+                match holder.Value with
+                | Some model -> model, Cmd.none
+                | None ->
+                    let screen =
+                        { Session = session
+                          Timeline = []
+                          Threads = []
+                          Composer = ""
+                          Status = "connecting…"
+                          Header = "New thread"
+                          Busy = true
+                          ApprovalId = ""
+                          ApprovalCommand = ""
+                          Plan = ""
+                          Search = ""
+                          SearchHits = []
+                          SideNotes = "Loading…"
+                          ThreadQuery = ""
+                          QueueCount = 0
+                          Diff = ""
+                          ShowSettings = false
+                          Mentions = []
+                          Attachments = []
+                          RemoteImages = Map.empty
+                          SectionDraft = ""
+                          ShowArchived = false
+                          ShowAllThreads = false
+                          Sections = []
+                          Skills = "Loading skills…"
+                          Models = []
+                          Terminal = ""
+                          TermIn = ""
+                          TermPid = ""
+                          ShowOnboarding = false
+                          OnboardingDismissed = false
+                          ShowTrust = false
+                          TrustDismissed = false
+                          TrustTarget = ""
+                          RemoteControl = "disabled"
+                          RateLimits = ""
+                          QueueItems = []
+                          Projects = []
+                          ProjectDraft = ""
+                          SelectedProject = ""
+                          FsNote = ""
+                          UserInputId = ""
+                          UserInputPrompt = ""
+                          UserInputDraft = ""
+                          SkillRows = []
+                          WorkspaceFiles = []
+                          SlashHits = []
+                          HookRows = []
+                          FeatureRows = []
+                          ComputerUse = "notConfigured"
+                          BrowserUse = "notConfigured"
+                          PluginAvailable = []
+                          ComposerHistory = []
+                          HistoryCursor = -1
+                          ComposerDraft = ""
+                          VimMode = "insert"
+                          CommentRows = []
+                          PromptRows = []
+                          PrTitle = ""
+                          PrBody = ""
+                          MemoryNotes = []
+                          McpRows = []
+                          McpDraft = ""
+                          Toast = ""
+                          TuiVim = ""
+                          CollaborationMode = ""
+                          Personality = ""
+                          Effort = ""
+                          TuiRaw = ""
+                          TuiTitle = "" }
+                    let model =
+                        { Screen = screen
+                          ApiKey = ""
+                          ModelDraft = ""
+                          SandboxRootDraft = "" }
+                    holder.Value <- Some model
+                    model, Cmd.none
+
+            let model, dispatch = ctx.useElmish(init, shellUpdate)
+            match holder.Value with
+            | Some _ -> ()
+            | None -> holder.Value <- Some model
+            let current () = holder.Value |> Option.defaultValue model
+            let state: IWritable<ScreenState> =
+                new Bridge<ScreenState>(
+                    (fun () -> current().Screen),
+                    fun screen ->
+                        holder.Value <- Some { current() with Screen = screen }
+                        dispatch (SetScreen screen))
+            let apiKey: IWritable<string> =
+                new Bridge<string>(
+                    (fun () -> current().ApiKey),
+                    fun value ->
+                        holder.Value <- Some { current() with ApiKey = value }
+                        dispatch (SetApiKey value))
+            let modelDraft: IWritable<string> =
+                new Bridge<string>(
+                    (fun () -> current().ModelDraft),
+                    fun value ->
+                        holder.Value <- Some { current() with ModelDraft = value }
+                        dispatch (SetModelDraft value))
+            let sandboxRootDraft: IWritable<string> =
+                new Bridge<string>(
+                    (fun () -> current().SandboxRootDraft),
+                    fun value ->
+                        holder.Value <- Some { current() with SandboxRootDraft = value }
+                        dispatch (SetSandboxRoot value))
 
             let composerVim = ctx.useState (ComposerVim(ComposerBuffer()))
 

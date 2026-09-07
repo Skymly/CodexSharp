@@ -5,7 +5,7 @@ CodexSharp follows the public Codex hub-and-spoke layout.
 ## Surfaces
 
 - **CLI TUI** (`codexsharp`) talks to Core in-process, same as the original TUI.
-- **Desktop** (Avalonia.FuncUI) talks JSON-RPC to `InProcessAppServer` (same protocol as `codexsharp app-server`).
+- **Desktop** (Avalonia.FuncUI.Elmish + Fluent) talks JSON-RPC to `InProcessAppServer` (same protocol as `codexsharp app-server`).
 - **App Server** exposes JSON-RPC over stdio, websocket (`--listen ws://IP:PORT`), or unix socket.
 
 ## Core loop (F#)
@@ -21,7 +21,7 @@ CodexSharp follows the public Codex hub-and-spoke layout.
 ## Runtime (C#)
 
 - `ConfigService` reads `~/.codexsharp/config.toml`
-- `HttpModelClient` supports Responses API and Chat Completions
+- `HttpModelClient` is an `IModelClient` over Microsoft.Extensions.AI (`IChatClient`). Tools are `AIFunctionDeclaration` only; the F# loop still executes them.
 - `BuiltinToolExecutor` hosts shell / files / apply_patch
 - `WorkspaceSandbox` enforces path policy
 - `JsonlThreadStore` persists threads
