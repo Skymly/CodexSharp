@@ -803,3 +803,81 @@ public class ModelProviderCapabilitiesTests
     }
 }
 
+
+public class HonestStubSettingsTests
+{
+    [Fact]
+    public void Catalog_lists_required_capabilities_without_enabled_status()
+    {
+        var labels = HonestStubs.Capabilities.Select(c => c.Label).ToArray();
+        Assert.Contains("Computer Use", labels);
+        Assert.Contains("Browser Use", labels);
+        Assert.Contains("Voice / realtime", labels);
+        Assert.Contains("Remote", labels);
+        Assert.Contains("Cloud thread / worktree", labels);
+        Assert.Contains("Credits", labels);
+        Assert.Contains("code_mode_host", labels);
+        Assert.Contains("Guardian", labels);
+        Assert.Contains("windowsSandbox", labels);
+        Assert.All(HonestStubs.Capabilities, c =>
+            Assert.True(c.Status is "notConfigured" or "underDevelopment", c.Label));
+        Assert.Contains("notConfigured", HonestStubs.CloudSlashMessage());
+        Assert.Contains("overlay", HonestStubs.PetOverlayMessage(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Locked_feature_flags_cannot_be_turned_on()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            FeatureFlags.Set("computer_use", true);
+            FeatureFlags.Set("browser_use", true);
+            FeatureFlags.Set("realtime", true);
+            FeatureFlags.Set("guardian", true);
+            FeatureFlags.Set("code_mode_host", true);
+            FeatureFlags.Set("web_search", true);
+            Assert.False(FeatureFlags.IsEnabled("computer_use"));
+            Assert.False(FeatureFlags.IsEnabled("browser_use"));
+            Assert.False(FeatureFlags.IsEnabled("realtime"));
+            Assert.False(FeatureFlags.IsEnabled("guardian"));
+            Assert.False(FeatureFlags.IsEnabled("code_mode_host"));
+            Assert.True(FeatureFlags.IsEnabled("web_search"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+
+    [Fact]
+    public async Task Enablement_set_refuses_computer_use()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            await using var hosted = InProcessAppServer.Start();
+            var client = hosted.Client;
+            await client.CallAsync("initialize", new { clientInfo = new { name = "t", title = "t", version = "0" } });
+            await client.NotifyAsync("initialized");
+            var result = await client.CallAsync("experimentalFeature/enablement/set", new
+            {
+                enablement = new Dictionary<string, bool> { ["computer_use"] = true, ["web_search"] = true },
+            });
+            Assert.False(result.GetProperty("enablement").GetProperty("computer_use").GetBoolean());
+            Assert.True(result.GetProperty("enablement").GetProperty("web_search").GetBoolean());
+            Assert.False(FeatureFlags.IsEnabled("computer_use"));
+            var listed = await client.CallAsync("experimentalFeature/list");
+            var cu = listed.GetProperty("data").EnumerateArray().Single(x => x.GetProperty("name").GetString() == "computer_use");
+            Assert.False(cu.GetProperty("enabled").GetBoolean());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+}

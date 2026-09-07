@@ -830,8 +830,9 @@ public sealed class AppServerHost
                     {
                         if (prop.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
                         {
-                            FeatureFlags.Set(prop.Name, prop.Value.GetBoolean());
-                            updated[prop.Name] = prop.Value.GetBoolean();
+                            var on = prop.Value.GetBoolean() && !HonestStubs.IsLockedFeature(prop.Name);
+                            FeatureFlags.Set(prop.Name, on);
+                            updated[prop.Name] = on;
                         }
                     }
                 }

@@ -179,7 +179,7 @@ module MainView =
         el.ValueKind = JsonValueKind.Object && el.TryGetProperty(name, &v) && v.ValueKind = JsonValueKind.True
 
     let private slashCommands =
-        [ "/help"; "/new"; "/compact"; "/fork"; "/side"; "/btw"; "/archive"; "/rollback"; "/exec"; "/review"; "/queue"; "/name"; "/rename"; "/effort"; "/ide"; "/rollout"; "/plan"; "/default"; "/pair"; "/stop"; "/status"; "/skills"; "/hooks"; "/mcp"; "/diff"; "/worktree"; "/memory"; "/memories"; "/model"; "/sandbox"; "/sandbox-add-read-dir"; "/logout"; "/init"; "/apply"; "/export"; "/recap"; "/clear"; "/delete"; "/pwd"; "/cd"; "/plugins"; "/experimental"; "/prompts"; "/permissions"; "/approvals"; "/personality"; "/usage"; "/copy"; "/keymap"; "/pets"; "/setup-default-sandbox"; "/doctor"; "/debug-config"; "/apps"; "/ps"; "/mention"; "/resume"; "/agents"; "/vim"; "/theme"; "/statusline"; "/title"; "/notifications"; "/pin"; "/search"; "/goal"; "/feedback"; "/approve"; "/import"; "/raw"; "/subagents"; "/execpolicy"; "/history" ]
+        [ "/help"; "/new"; "/compact"; "/fork"; "/side"; "/btw"; "/archive"; "/rollback"; "/exec"; "/review"; "/queue"; "/name"; "/rename"; "/effort"; "/ide"; "/rollout"; "/plan"; "/default"; "/pair"; "/stop"; "/status"; "/skills"; "/hooks"; "/mcp"; "/diff"; "/worktree"; "/memory"; "/memories"; "/model"; "/sandbox"; "/sandbox-add-read-dir"; "/logout"; "/init"; "/apply"; "/export"; "/recap"; "/clear"; "/delete"; "/pwd"; "/cd"; "/plugins"; "/experimental"; "/prompts"; "/permissions"; "/approvals"; "/personality"; "/usage"; "/copy"; "/keymap"; "/pets"; "/pet"; "/cloud"; "/cloud-environment"; "/setup-default-sandbox"; "/doctor"; "/debug-config"; "/apps"; "/ps"; "/mention"; "/resume"; "/agents"; "/vim"; "/theme"; "/statusline"; "/title"; "/notifications"; "/pin"; "/search"; "/goal"; "/feedback"; "/approve"; "/import"; "/raw"; "/subagents"; "/execpolicy"; "/history" ]
 
     let private exportMarkdown (threadId: string) (timeline: TimelineItem list) =
         let md =
@@ -922,11 +922,14 @@ module MainView =
                 |> Async.Start
 
             let toggleFeature (name: string) (enabled: bool) =
-                async {
-                    do! session.SetExperimentalFeatureAsync(name, not enabled) |> Async.AwaitTask |> Async.Ignore
-                    refreshChrome ()
-                }
-                |> Async.Start
+                if HonestStubs.IsLockedFeature name then
+                    ()
+                else
+                    async {
+                        do! session.SetExperimentalFeatureAsync(name, not enabled) |> Async.AwaitTask |> Async.Ignore
+                        refreshChrome ()
+                    }
+                    |> Async.Start
 
             let insertMention (path: string) =
                 let cleaned = path.Replace("\\", "/").Replace("[d] ", "")
@@ -1092,7 +1095,7 @@ module MainView =
                         else
                             []
                     if text = "/help" then
-                        addNote "agent_message" "/new /compact /fork /side /archive /rollback /exec CMD /review /queue /name TITLE /rename TITLE /effort low|medium|high /ide /rollout /plan /stop /resume ID /agents ID /status /skills /hooks /mcp /diff /worktree /memory /model NAME /sandbox MODE /logout /init /export /recap /clear /pwd /cd DIR /plugins /experimental /prompts /permissions /personality NAME /usage /copy /keymap /pets /setup-default-sandbox /vim /theme /statusline /pin /search TERM /goal [TEXT|pause|resume|clear] /feedback /approve /import /raw /subagents /execpolicy /history /help"
+                        addNote "agent_message" "/new /compact /fork /side /archive /rollback /exec CMD /review /queue /name TITLE /rename TITLE /effort low|medium|high /ide /rollout /plan /stop /resume ID /agents ID /status /skills /hooks /mcp /diff /worktree /memory /model NAME /sandbox MODE /logout /init /export /recap /clear /pwd /cd DIR /plugins /experimental /prompts /permissions /personality NAME /usage /copy /keymap /pets /pet /cloud /cloud-environment /setup-default-sandbox /vim /theme /statusline /pin /search TERM /goal [TEXT|pause|resume|clear] /feedback /approve /import /raw /subagents /execpolicy /history /help"
                     elif text = "/new" then
                         async {
                             let! _ = session.StartThreadAsync() |> Async.AwaitTask
@@ -1585,17 +1588,19 @@ module MainView =
                                 Dispatcher.UIThread.Post(fun () -> addNote "error" ex.Message)
                         }
                         |> Async.Start
-                    elif text = "/pets" || text = "/pet" || text.StartsWith("/pets ") || text.StartsWith("/pet ") then
-                        let rest =
-                            if text.StartsWith("/pets") then (if text.Length > 5 then text.Substring(5).Trim() else "")
-                            else (if text.Length > 4 then text.Substring(4).Trim() else "")
+                    elif text = "/cloud" || text.StartsWith("/cloud ") || text.StartsWith("/cloud-") then
+                        addNote "agent_message" (HonestStubs.CloudSlashMessage())
+                    elif text = "/pet" || text.StartsWith("/pet ") then
+                        addNote "agent_message" (HonestStubs.PetOverlayMessage())
+                    elif text = "/pets" || text.StartsWith("/pets ") then
+                        let rest = if text.Length > 5 then text.Substring(5).Trim() else ""
                         async {
                             try
                                 let! pet =
                                     if rest <> "" then session.SetPetsAsync rest |> Async.AwaitTask
                                     else session.ReadPetsAsync() |> Async.AwaitTask
                                 Dispatcher.UIThread.Post(fun () ->
-                                    addNote "agent_message" ("pet " + jsStr pet "id" + " " + jsStr pet "ascii"))
+                                    addNote "agent_message" ("pet " + jsStr pet "id" + " " + jsStr pet "ascii" + Environment.NewLine + HonestStubs.PetOverlayMessage()))
                             with ex ->
                                 Dispatcher.UIThread.Post(fun () -> addNote "error" ex.Message)
                         }
@@ -2471,26 +2476,38 @@ module MainView =
                                             ]
                                         ]
                                         TextBlock.create [
-                                            TextBlock.text ("computerUse  " + state.Current.ComputerUse)
-                                            TextBlock.foreground Theme.muted
-                                            TextBlock.fontSize 11.
-                                        ]
-                                        TextBlock.create [
-                                            TextBlock.text ("browserUse  " + state.Current.BrowserUse)
-                                            TextBlock.foreground Theme.muted
-                                            TextBlock.fontSize 11.
+                                            TextBlock.text "Unconfigured capabilities"
+                                            TextBlock.fontWeight FontWeight.SemiBold
+                                            TextBlock.foreground Theme.accent
                                         ]
                                         StackPanel.create [
                                             StackPanel.spacing 2.
                                             StackPanel.children (
-                                                if state.Current.FeatureRows.IsEmpty then
+                                                HonestStubs.Capabilities
+                                                |> Seq.map (fun cap ->
+                                                    TextBlock.create [
+                                                        TextBlock.text (cap.Label + "  " + cap.Status + "  —  " + cap.Detail)
+                                                        TextBlock.foreground Theme.muted
+                                                        TextBlock.fontSize 11.
+                                                        TextBlock.textWrapping TextWrapping.Wrap
+                                                    ] :> IView)
+                                                |> Seq.toList
+                                            )
+                                        ]
+                                        StackPanel.create [
+                                            StackPanel.spacing 2.
+                                            StackPanel.children (
+                                                let rows =
+                                                    state.Current.FeatureRows
+                                                    |> List.filter (fun row -> not (HonestStubs.IsLockedFeature row.Name))
+                                                if rows.IsEmpty then
                                                     [ TextBlock.create [
-                                                        TextBlock.text "No feature flags"
+                                                        TextBlock.text "No togglable feature flags"
                                                         TextBlock.foreground Theme.muted
                                                         TextBlock.fontSize 11.
                                                       ] :> IView ]
                                                 else
-                                                    state.Current.FeatureRows
+                                                    rows
                                                     |> List.map (fun row ->
                                                         Button.create [
                                                             Button.content (row.Name + "  " + (if row.Enabled then "on" else "off"))
@@ -2870,29 +2887,11 @@ module MainView =
                                                         TextBlock.fontSize 11.
                                                         TextBlock.textWrapping TextWrapping.Wrap
                                                     ]
-                                                    StackPanel.create [
-                                                        StackPanel.orientation Orientation.Horizontal
-                                                        StackPanel.spacing 4.
-                                                        StackPanel.children [
-                                                            Button.create [
-                                                                Button.content "Enable RC"
-                                                                Button.onClick (fun _ ->
-                                                                    async {
-                                                                        do! session.EnableRemoteControlAsync() |> Async.AwaitTask |> Async.Ignore
-                                                                        refreshChrome ()
-                                                                    }
-                                                                    |> Async.Start)
-                                                            ]
-                                                            Button.create [
-                                                                Button.content "Disable RC"
-                                                                Button.onClick (fun _ ->
-                                                                    async {
-                                                                        do! session.DisableRemoteControlAsync() |> Async.AwaitTask |> Async.Ignore
-                                                                        refreshChrome ()
-                                                                    }
-                                                                    |> Async.Start)
-                                                            ]
-                                                        ]
+                                                    TextBlock.create [
+                                                        TextBlock.text "Remote enable/disable is not offered here; there is no transport."
+                                                        TextBlock.foreground Theme.muted
+                                                        TextBlock.fontSize 11.
+                                                        TextBlock.textWrapping TextWrapping.Wrap
                                                     ]
                                                     ComboBox.create [
                                                         ComboBox.dataItems state.Current.Models
