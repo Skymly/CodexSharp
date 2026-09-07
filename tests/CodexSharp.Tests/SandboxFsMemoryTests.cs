@@ -419,7 +419,7 @@ public class WorkspaceWritePathPolicyTests
                 [ModelStreamEvent.NewToolCallReady(new ToolCallRequest("w1", "write_file", args)), ModelStreamEvent.NewStreamFinished("tool")],
                 [ModelStreamEvent.NewOutputTextDelta("ok"), ModelStreamEvent.NewStreamFinished("stop")]);
             var sink = new RecordingSink();
-            var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), new NoopSteerHost());
+            var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), new NoopSteerHost(), "", "");
             var history = new List<HistoryMessage>();
             await AgentLoop.runTurn(deps, "thr_sandbox", history, "write outside", CancellationToken.None);
             Assert.Contains(history, m => m.Role == "tool" && m.Content.Contains("outside workspace", StringComparison.OrdinalIgnoreCase));
