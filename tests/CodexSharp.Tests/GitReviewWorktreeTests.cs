@@ -211,8 +211,18 @@ public class WorktreeSessionTests
             var started = await session.StartWorktreeAsync(repo);
             Assert.Equal("notConfigured", started.GetProperty("cloudWorktree").GetString());
             Assert.True(Directory.Exists(started.GetProperty("cwd").GetString()));
-            Assert.StartsWith("thr_", started.GetProperty("thread").GetProperty("id").GetString());
-            Assert.Equal(started.GetProperty("thread").GetProperty("id").GetString(), session.ThreadId);
+            var threadId = started.GetProperty("thread").GetProperty("id").GetString();
+            Assert.StartsWith("thr_", threadId);
+            Assert.Equal(threadId, session.ThreadId);
+            var bound = started.GetProperty("thread").GetProperty("worktree");
+            Assert.Equal(started.GetProperty("path").GetString(), bound.GetProperty("path").GetString());
+            Assert.Equal("notConfigured", bound.GetProperty("cloudWorktree").GetString());
+            Assert.Equal("notConfigured", started.GetProperty("thread").GetProperty("cloudWorktree").GetString());
+            var path = started.GetProperty("path").GetString();
+            Assert.True(Directory.Exists(path));
+            await session.DeleteThreadAsync(threadId!);
+            Assert.False(Directory.Exists(path));
+            Assert.Null(WorktreeBindings.Find(threadId!));
         }
         finally
         {
