@@ -261,3 +261,47 @@ type IUserInputHost =
         requestId: string *
         questionsJson: string *
         ct: Threading.CancellationToken -> Threading.Tasks.Task<string>
+
+module ThreadGoal =
+    [<Literal>]
+    let Active = "active"
+
+    [<Literal>]
+    let Paused = "paused"
+
+    [<Literal>]
+    let Cleared = "cleared"
+
+    let normalizeStatus (status: string) =
+        if String.IsNullOrWhiteSpace status then Active
+        else
+            match status.Trim().ToLowerInvariant() with
+            | "paused" | "pause" -> Paused
+            | "cleared" | "clear" | "complete" | "completed" -> Cleared
+            | "resume" | "unpause" | "active" -> Active
+            | _ -> Active
+
+    let isActive status = normalizeStatus status = Active
+
+    let promptBlock (objective: string) (status: string) =
+        if String.IsNullOrWhiteSpace objective || not (isActive status) then ""
+        else
+            "Current thread goal (status=active). Continue working toward this objective on every turn and steer. Do not drop this text:"
+            + Environment.NewLine
+            + objective.Trim()
+
+module GoalSlash =
+    type Command =
+        | Show
+        | Pause
+        | Resume
+        | Clear
+        | Set of string
+
+    let parse (rest: string) =
+        match (if isNull rest then "" else rest).Trim() with
+        | "" | "show" | "status" -> Show
+        | "pause" -> Pause
+        | "resume" | "unpause" -> Resume
+        | "clear" | "none" -> Clear
+        | text -> Set text

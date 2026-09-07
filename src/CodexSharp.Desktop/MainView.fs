@@ -138,7 +138,9 @@ type ScreenState =
       Personality: string
       Effort: string
       TuiRaw: string
-      TuiTitle: string }
+      TuiTitle: string
+      GoalObjective: string
+      GoalStatus: string }
 
 module MainView =
 
@@ -702,7 +704,9 @@ module MainView =
                           Personality = ""
                           Effort = ""
                           TuiRaw = ""
-                          TuiTitle = "" }
+                          TuiTitle = ""
+                          GoalObjective = ""
+                          GoalStatus = "cleared" }
                     let model =
                         { Screen = screen
                           ApiKey = ""
@@ -879,6 +883,32 @@ module MainView =
                                     TuiTitle = chrome.TuiTitle })
                     with _ ->
                         ()
+                }
+                |> Async.Start
+
+            let applyGoalPayload (el: JsonElement) =
+                let mutable goal = Unchecked.defaultof<JsonElement>
+                let objective, status =
+                    if el.TryGetProperty("goal", &goal) && goal.ValueKind = JsonValueKind.Object then
+                        let mutable obj = Unchecked.defaultof<JsonElement>
+                        let mutable st = Unchecked.defaultof<JsonElement>
+                        let o =
+                            if goal.TryGetProperty("objective", &obj) && obj.ValueKind = JsonValueKind.String then obj.GetString() else ""
+                        let s =
+                            if goal.TryGetProperty("status", &st) && st.ValueKind = JsonValueKind.String then ThreadGoal.normalizeStatus (st.GetString()) else ThreadGoal.Cleared
+                        (if String.IsNullOrWhiteSpace o then "" else o), (if String.IsNullOrWhiteSpace o then ThreadGoal.Cleared else s)
+                    else
+                        "", ThreadGoal.Cleared
+                state.Set { state.Current with GoalObjective = objective; GoalStatus = status }
+
+            let refreshGoal () =
+                async {
+                    try
+                        let! g = session.GetGoalAsync() |> Async.AwaitTask
+                        Dispatcher.UIThread.Post(fun () -> applyGoalPayload g)
+                    with _ ->
+                        Dispatcher.UIThread.Post(fun () ->
+                            state.Set { state.Current with GoalObjective = ""; GoalStatus = ThreadGoal.Cleared })
                 }
                 |> Async.Start
 
@@ -1062,7 +1092,7 @@ module MainView =
                         else
                             []
                     if text = "/help" then
-                        addNote "agent_message" "/new /compact /fork /side /archive /rollback /exec CMD /review /queue /name TITLE /rename TITLE /effort low|medium|high /ide /rollout /plan /stop /resume ID /agents ID /status /skills /hooks /mcp /diff /worktree /memory /model NAME /sandbox MODE /logout /init /export /recap /clear /pwd /cd DIR /plugins /experimental /prompts /permissions /personality NAME /usage /copy /keymap /pets /setup-default-sandbox /vim /theme /statusline /pin /search TERM /goal [TEXT|clear] /feedback /approve /import /raw /subagents /execpolicy /history /help"
+                        addNote "agent_message" "/new /compact /fork /side /archive /rollback /exec CMD /review /queue /name TITLE /rename TITLE /effort low|medium|high /ide /rollout /plan /stop /resume ID /agents ID /status /skills /hooks /mcp /diff /worktree /memory /model NAME /sandbox MODE /logout /init /export /recap /clear /pwd /cd DIR /plugins /experimental /prompts /permissions /personality NAME /usage /copy /keymap /pets /setup-default-sandbox /vim /theme /statusline /pin /search TERM /goal [TEXT|pause|resume|clear] /feedback /approve /import /raw /subagents /execpolicy /history /help"
                     elif text = "/new" then
                         async {
                             let! _ = session.StartThreadAsync() |> Async.AwaitTask
@@ -1221,13 +1251,17 @@ module MainView =
                         async {
                             do! session.ResumeThreadAsync id |> Async.AwaitTask
                             let! items = session.ListItemsAsync() |> Async.AwaitTask
+                            let! goal = session.GetGoalAsync() |> Async.AwaitTask
                             Dispatcher.UIThread.Post(fun () ->
+                                applyGoalPayload goal
                                 state.Set
                                     { state.Current with
                                         Timeline = itemsToTimeline items
                                         Header = session.Title
                                         Busy = false
-                                        Status = state.Current.Status })
+                                        Status = state.Current.Status
+                                        GoalObjective = state.Current.GoalObjective
+                                        GoalStatus = state.Current.GoalStatus })
                         }
                         |> Async.Start
                     elif text = "/resume" then
@@ -1686,30 +1720,44 @@ module MainView =
                                     Dispatcher.UIThread.Post(fun () -> addNote "error" ex.Message)
                             }
                             |> Async.Start
-                    elif text = "/goal" then
+                    elif text = "/goal" || text.StartsWith("/goal ") then
+                        let rest = if text.Length > 5 then text.Substring(5).Trim() else ""
                         async {
                             try
-                                let! g = session.GetGoalAsync() |> Async.AwaitTask
-                                let mutable goal = Unchecked.defaultof<JsonElement>
-                                let msg =
-                                    if g.TryGetProperty("goal", &goal) && goal.ValueKind = JsonValueKind.Object then
-                                        let mutable obj = Unchecked.defaultof<JsonElement>
-                                        if goal.TryGetProperty("objective", &obj) && obj.ValueKind = JsonValueKind.String then obj.GetString() else "no goal"
-                                    else "no goal"
-                                Dispatcher.UIThread.Post(fun () -> addNote "agent_message" msg)
+                                match GoalSlash.parse rest with
+                                | GoalSlash.Command.Show ->
+                                    let! g = session.GetGoalAsync() |> Async.AwaitTask
+                                    Dispatcher.UIThread.Post(fun () ->
+                                        applyGoalPayload g
+                                        let s = state.Current
+                                        let msg =
+                                            if String.IsNullOrWhiteSpace s.GoalObjective then "no goal"
+                                            else s.GoalStatus + ": " + s.GoalObjective
+                                        addNote "agent_message" msg)
+                                | GoalSlash.Command.Clear ->
+                                    do! session.ClearGoalAsync() |> Async.AwaitTask |> Async.Ignore
+                                    Dispatcher.UIThread.Post(fun () ->
+                                        state.Set { state.Current with GoalObjective = ""; GoalStatus = ThreadGoal.Cleared }
+                                        addNote "agent_message" "goal cleared")
+                                | GoalSlash.Command.Pause ->
+                                    do! session.SetGoalAsync(null, ThreadGoal.Paused) |> Async.AwaitTask |> Async.Ignore
+                                    let! g = session.GetGoalAsync() |> Async.AwaitTask
+                                    Dispatcher.UIThread.Post(fun () ->
+                                        applyGoalPayload g
+                                        addNote "agent_message" (if String.IsNullOrWhiteSpace state.Current.GoalObjective then "no goal" else "goal paused: " + state.Current.GoalObjective))
+                                | GoalSlash.Command.Resume ->
+                                    do! session.SetGoalAsync(null, ThreadGoal.Active) |> Async.AwaitTask |> Async.Ignore
+                                    let! g = session.GetGoalAsync() |> Async.AwaitTask
+                                    Dispatcher.UIThread.Post(fun () ->
+                                        applyGoalPayload g
+                                        addNote "agent_message" (if String.IsNullOrWhiteSpace state.Current.GoalObjective then "no goal" else "goal: " + state.Current.GoalObjective))
+                                | GoalSlash.Command.Set obj ->
+                                    do! session.SetGoalAsync(obj, ThreadGoal.Active) |> Async.AwaitTask |> Async.Ignore
+                                    Dispatcher.UIThread.Post(fun () ->
+                                        state.Set { state.Current with GoalObjective = obj; GoalStatus = ThreadGoal.Active }
+                                        addNote "agent_message" ("goal: " + obj))
                             with ex ->
                                 Dispatcher.UIThread.Post(fun () -> addNote "error" ex.Message)
-                        }
-                        |> Async.Start
-                    elif text.StartsWith("/goal ") then
-                        let rest = text.Substring(6).Trim()
-                        async {
-                            if rest = "clear" then
-                                do! session.ClearGoalAsync() |> Async.AwaitTask |> Async.Ignore
-                                Dispatcher.UIThread.Post(fun () -> addNote "agent_message" "goal cleared")
-                            else
-                                do! session.SetGoalAsync(rest) |> Async.AwaitTask |> Async.Ignore
-                                Dispatcher.UIThread.Post(fun () -> addNote "agent_message" ("goal: " + rest))
                         }
                         |> Async.Start
                     elif text = "/feedback" then
@@ -1892,7 +1940,9 @@ module MainView =
                                 ApprovalCommand = ""
                                 Plan = ""
                                 SearchHits = []
-                                Diff = "" })
+                                Diff = ""
+                                GoalObjective = ""
+                                GoalStatus = ThreadGoal.Cleared })
                     refreshThreads ()
                 }
                 |> Async.Start
@@ -1901,7 +1951,9 @@ module MainView =
                 async {
                     do! session.ResumeThreadAsync id |> Async.AwaitTask
                     let! items = session.ListItemsAsync() |> Async.AwaitTask
+                    let! goal = session.GetGoalAsync() |> Async.AwaitTask
                     Dispatcher.UIThread.Post(fun () ->
+                        applyGoalPayload goal
                         state.Set
                             { state.Current with
                                 Timeline = itemsToTimeline items
@@ -1910,7 +1962,9 @@ module MainView =
                                 Status = state.Current.Status
                                 ApprovalId = ""
                                 ApprovalCommand = ""
-                                Plan = "" })
+                                Plan = ""
+                                GoalObjective = state.Current.GoalObjective
+                                GoalStatus = state.Current.GoalStatus })
                 }
                 |> Async.Start
 
@@ -3207,6 +3261,14 @@ module MainView =
                                             StackPanel.create [
                                                 StackPanel.spacing 10.
                                                 StackPanel.children [
+                                                    if not (String.IsNullOrWhiteSpace state.Current.GoalObjective) then
+                                                        TextBlock.create [
+                                                            TextBlock.text ("Goal · " + state.Current.GoalStatus + "  " + state.Current.GoalObjective)
+                                                            TextBlock.foreground Theme.accent
+                                                            TextBlock.fontSize 11.
+                                                            TextBlock.textWrapping TextWrapping.Wrap
+                                                            TextBlock.textTrimming TextTrimming.CharacterEllipsis
+                                                        ]
                                                     TextBlock.create [
                                                         TextBlock.text (
                                                             (if state.Current.Busy then "▸ working  " else "▸ idle  ")

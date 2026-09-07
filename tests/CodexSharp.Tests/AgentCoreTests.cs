@@ -80,7 +80,7 @@ public class AgentLoopTests
             ]);
 
         var sink = new RecordingSink();
-        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), new NoopSteerHost());
+        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), new NoopSteerHost(), "", "");
         var history = new List<HistoryMessage>();
         var turnId = await AgentLoop.runTurn(deps, "thr_test", history, "Read README.md", CancellationToken.None);
 
@@ -122,7 +122,7 @@ public class CodexSqEqTests
                 ModelStreamEvent.NewStreamFinished("stop"),
             ]);
         var sink = new RecordingSink();
-        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), new NoopSteerHost());
+        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), new NoopSteerHost(), "", "");
         var codex = CodexModule.start(deps);
         var turn = await codex.Submit(Op.NewUserInput("hello"), CancellationToken.None);
         Assert.False(string.IsNullOrWhiteSpace(turn));
@@ -179,7 +179,7 @@ public class FileChangeItemTests
                 ModelStreamEvent.NewStreamFinished("stop"),
             ]);
         var sink = new RecordingSink();
-        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), new NoopSteerHost());
+        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), new NoopSteerHost(), "", "");
         await AgentLoop.runTurn(deps, "thr_patch", new List<HistoryMessage>(), "patch it", CancellationToken.None);
         Assert.Contains(sink.Events, e => e is AgentEvent.ItemCompleted c && c.Item.Kind == "file_change");
         Assert.True(File.Exists(Path.Combine(root, "notes.md")));
@@ -273,7 +273,7 @@ public class PreToolUseHookTests
                 ModelStreamEvent.NewStreamFinished("stop"),
             ]);
         var sink = new RecordingSink();
-        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new BlockingHookHost(), new NoopUserInputHost(), new NoopSteerHost());
+        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new BlockingHookHost(), new NoopUserInputHost(), new NoopSteerHost(), "", "");
         var history = new List<HistoryMessage>();
         await AgentLoop.runTurn(deps, "thr_hook", history, "read it", CancellationToken.None);
         Assert.Contains(history, m => m.Role == "tool" && m.Content.Contains("Hook blocked"));
@@ -478,7 +478,7 @@ public class TurnSteerTests
             [ModelStreamEvent.NewOutputTextDelta("second"), ModelStreamEvent.NewStreamFinished("stop")]);
         var sink = new RecordingSink();
         var steer = new CountingSteerHost();
-        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), steer);
+        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), steer, "", "");
         var history = new List<HistoryMessage>();
         await AgentLoop.runTurn(deps, "thr_steer", history, "hello", CancellationToken.None);
         Assert.Contains(history, m => m.Role == "user" && m.Content.Contains("keep going"));

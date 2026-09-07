@@ -122,7 +122,7 @@ public class UserInputProtocolTests
             ]);
         var sink = new RecordingSink();
         var input = new InteractiveUserInput();
-        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), input, new NoopSteerHost());
+        var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), input, new NoopSteerHost(), "", "");
         var loop = AgentLoop.runTurn(deps, "thr_ui", new List<HistoryMessage>(), "ask me", CancellationToken.None);
         var deadline = DateTime.UtcNow.AddSeconds(3);
         while (DateTime.UtcNow < deadline && !sink.Events.Any(e => e is AgentEvent.UserInputNeeded))

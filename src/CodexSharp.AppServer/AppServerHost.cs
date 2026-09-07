@@ -402,15 +402,14 @@ public sealed class AppServerHost
             case "thread/goal/set":
             {
                 var threadId = Str(paramsEl, "threadId") ?? "";
-                var objective = Str(paramsEl, "objective") ?? "";
                 if (!_threads.TryGetValue(threadId, out var session))
                 {
                     Error(id, -32001, $"Thread not loaded: {threadId}");
                     break;
                 }
-                session.SetGoal(objective, Str(paramsEl, "status"));
-                Notify("thread/goal/updated", new { threadId, goal = new { objective, status = session.GoalStatus } });
-                Result(id, new { goal = new { threadId, objective, status = session.GoalStatus } });
+                session.SetGoal(Str(paramsEl, "objective"), Str(paramsEl, "status"));
+                Notify(AppServerNotifications.ThreadGoalUpdated, new { threadId, goal = session.GoalDto() });
+                Result(id, new { goal = session.GoalDto() });
                 break;
             }
 
@@ -422,7 +421,7 @@ public sealed class AppServerHost
                     Error(id, -32001, $"Thread not loaded: {threadId}");
                     break;
                 }
-                Result(id, new { goal = session.Goal is null ? null : new { threadId, objective = session.Goal, status = session.GoalStatus } });
+                Result(id, new { goal = session.GoalDto() });
                 break;
             }
 
@@ -433,8 +432,8 @@ public sealed class AppServerHost
                 {
                     session.ClearGoal();
                 }
-                Notify("thread/goal/cleared", new { threadId });
-                Result(id, new { });
+                Notify(AppServerNotifications.ThreadGoalCleared, new { threadId });
+                Result(id, new { cleared = true });
                 break;
             }
 

@@ -27,6 +27,7 @@ internal sealed class TuiAgent : IAsyncDisposable
     public InteractiveUserInput UserInput { get; }
     public InteractiveUserInput McpElicitation { get; }
     public string? Goal { get; private set; }
+    public string GoalStatus { get; private set; } = ThreadGoal.Cleared;
     public List<string> PendingImages { get; } = [];
 
     public event Action<AgentEvent>? Event
@@ -53,13 +54,16 @@ internal sealed class TuiAgent : IAsyncDisposable
         var app = new AppServerSession(hosted.Client);
         await app.InitializeAsync("codexsharp_tui", "CodexSharp TUI");
         await app.ResumeThreadAsync(threadId);
-        return new TuiAgent(hosted, app, cfg);
+        var agent = new TuiAgent(hosted, app, cfg);
+        agent.SyncGoal();
+        return agent;
     }
 
     public TuiAgent Restart()
     {
         App.StartThreadAsync(Config.Cwd).GetAwaiter().GetResult();
         Goal = null;
+        GoalStatus = ThreadGoal.Cleared;
         PendingImages.Clear();
         return this;
     }
@@ -67,6 +71,7 @@ internal sealed class TuiAgent : IAsyncDisposable
     public TuiAgent Resume(string threadId, CodexConfig? _ = null)
     {
         App.ResumeThreadAsync(threadId).GetAwaiter().GetResult();
+        SyncGoal();
         return this;
     }
 
@@ -104,16 +109,40 @@ internal sealed class TuiAgent : IAsyncDisposable
         Config = ConfigService.Load(cwd ?? Config.Cwd, model, sandbox, approval);
     }
 
-    public void SetGoal(string objective, string? status = null)
+    public void SetGoal(string? objective, string? status = null)
     {
-        Goal = objective;
-        App.Raw.CallAsync("thread/goal/set", new { threadId = Thread.Id, objective, status = status ?? "active" }).GetAwaiter().GetResult();
+        App.SetGoalAsync(objective, status).GetAwaiter().GetResult();
+        SyncGoal();
     }
 
     public void ClearGoal()
     {
+        App.ClearGoalAsync().GetAwaiter().GetResult();
         Goal = null;
-        App.Raw.CallAsync("thread/goal/clear", new { threadId = Thread.Id }).GetAwaiter().GetResult();
+        GoalStatus = ThreadGoal.Cleared;
+    }
+
+    public void SyncGoal()
+    {
+        var payload = App.GetGoalAsync().GetAwaiter().GetResult();
+        if (payload.TryGetProperty("goal", out var goal) && goal.ValueKind == System.Text.Json.JsonValueKind.Object)
+        {
+            Goal = goal.TryGetProperty("objective", out var obj) && obj.ValueKind == System.Text.Json.JsonValueKind.String
+                ? obj.GetString()
+                : null;
+            GoalStatus = goal.TryGetProperty("status", out var st) && st.ValueKind == System.Text.Json.JsonValueKind.String
+                ? ThreadGoal.normalizeStatus(st.GetString() ?? "")
+                : ThreadGoal.Cleared;
+            if (string.IsNullOrWhiteSpace(Goal))
+            {
+                Goal = null;
+                GoalStatus = ThreadGoal.Cleared;
+            }
+            return;
+        }
+
+        Goal = null;
+        GoalStatus = ThreadGoal.Cleared;
     }
 
     public bool TogglePin()

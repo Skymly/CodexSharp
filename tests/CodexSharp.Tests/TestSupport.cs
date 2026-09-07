@@ -11,8 +11,11 @@ public sealed class ScriptedModelClient : IModelClient
         _turns = new Queue<ModelStreamEvent[]>(turns);
     }
 
+    public List<ModelRequest> Requests { get; } = [];
+
     public Task StreamAsync(ModelRequest request, Action<ModelStreamEvent> onEvent, CancellationToken ct)
     {
+        Requests.Add(request);
         var batch = _turns.Count > 0 ? _turns.Dequeue() : [ModelStreamEvent.NewOutputTextDelta("done"), ModelStreamEvent.NewStreamFinished("stop")];
         foreach (var evt in batch)
         {

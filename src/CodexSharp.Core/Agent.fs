@@ -19,7 +19,9 @@ type AgentDeps =
       ExtraTools: ToolSpec[]
       Hooks: IHookHost
       UserInput: IUserInputHost
-      Steer: ISteerHost }
+      Steer: ISteerHost
+      GoalObjective: string
+      GoalStatus: string }
 
 type NoopHookHost() =
     interface IHookHost with
@@ -102,7 +104,7 @@ module AgentLoop =
             while continueLoop && iterations < maxTurns && not ct.IsCancellationRequested do
                 drainSteer true
                 iterations <- iterations + 1
-                let request = Prompt.buildWithTools deps.Config (history.ToArray()) deps.ExtraTools threadId
+                let request = Prompt.buildWithGoal deps.Config (history.ToArray()) deps.ExtraTools threadId deps.GoalObjective deps.GoalStatus
                 let text = StringBuilder()
                 let calls = ResizeArray<ToolCallRequest>()
                 let agentItem = { ConversationItem.started AgentMessage with Status = "in_progress" }

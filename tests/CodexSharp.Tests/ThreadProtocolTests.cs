@@ -13,16 +13,196 @@ namespace CodexSharp.Tests;
 public class ThreadGoalTests
 {
     [Fact]
-    public async Task Set_and_get_goal_over_app_server()
+    public void Slash_parser_covers_pause_resume_clear()
     {
-        await using var hosted = InProcessAppServer.Start();
-        var session = new AppServerSession(hosted.Client);
-        await session.InitializeAsync();
-        var threadId = await session.StartThreadAsync(Path.GetTempPath(), "g");
-        var set = await hosted.Client.CallAsync("thread/goal/set", new { threadId, objective = "Finish the port" });
-        Assert.Equal("Finish the port", set.GetProperty("goal").GetProperty("objective").GetString());
-        var get = await hosted.Client.CallAsync("thread/goal/get", new { threadId });
-        Assert.Equal("Finish the port", get.GetProperty("goal").GetProperty("objective").GetString());
+        Assert.True(GoalSlash.parse("").IsShow);
+        Assert.True(GoalSlash.parse("pause").IsPause);
+        Assert.True(GoalSlash.parse("resume").IsResume);
+        Assert.True(GoalSlash.parse("clear").IsClear);
+        var set = Assert.IsType<GoalSlash.Command.Set>(GoalSlash.parse("Finish the port"));
+        Assert.Equal("Finish the port", set.Item);
+        Assert.Equal("", ThreadGoal.promptBlock("x", ThreadGoal.Paused));
+        Assert.Contains("Finish the port", ThreadGoal.promptBlock("Finish the port", ThreadGoal.Active));
+    }
+
+    [Fact]
+    public async Task Set_pause_resume_clear_over_app_server()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            await using var hosted = InProcessAppServer.Start();
+            var session = new AppServerSession(hosted.Client);
+            await session.InitializeAsync();
+            var threadId = await session.StartThreadAsync(Path.GetTempPath(), "g");
+            var set = await hosted.Client.CallAsync("thread/goal/set", new { threadId, objective = "Finish the port" });
+            Assert.Equal("Finish the port", set.GetProperty("goal").GetProperty("objective").GetString());
+            Assert.Equal(ThreadGoal.Active, set.GetProperty("goal").GetProperty("status").GetString());
+            var paused = await hosted.Client.CallAsync("thread/goal/set", new { threadId, status = ThreadGoal.Paused });
+            Assert.Equal("Finish the port", paused.GetProperty("goal").GetProperty("objective").GetString());
+            Assert.Equal(ThreadGoal.Paused, paused.GetProperty("goal").GetProperty("status").GetString());
+            var resumed = await hosted.Client.CallAsync("thread/goal/set", new { threadId, status = ThreadGoal.Active });
+            Assert.Equal(ThreadGoal.Active, resumed.GetProperty("goal").GetProperty("status").GetString());
+            var cleared = await hosted.Client.CallAsync("thread/goal/clear", new { threadId });
+            Assert.True(cleared.GetProperty("cleared").GetBoolean());
+            var get = await hosted.Client.CallAsync("thread/goal/get", new { threadId });
+            Assert.Equal(JsonValueKind.Null, get.GetProperty("goal").ValueKind);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+
+    [Fact]
+    public async Task Resume_reloads_persisted_goal()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            await using var hosted = InProcessAppServer.Start();
+            var session = new AppServerSession(hosted.Client);
+            await session.InitializeAsync();
+            var threadId = await session.StartThreadAsync(Path.GetTempPath(), "persist-goal");
+            await session.SetGoalAsync("Keep the objective");
+            await session.SetGoalAsync(status: ThreadGoal.Paused);
+            await session.ResumeThreadAsync(threadId);
+            var get = await session.GetGoalAsync();
+            Assert.Equal("Keep the objective", get.GetProperty("goal").GetProperty("objective").GetString());
+            Assert.Equal(ThreadGoal.Paused, get.GetProperty("goal").GetProperty("status").GetString());
+
+            var cfg = ConfigService.Load(Path.GetTempPath());
+            var revived = CodexSession.Resume(threadId, cfg);
+            Assert.Equal("Keep the objective", revived.Goal);
+            Assert.Equal(ThreadGoal.Paused, revived.GoalStatus);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+
+    [Fact]
+    public async Task Active_goal_stays_in_prompt_after_steer()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(Path.GetTempPath(), "codexsharp-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            var cfg = ConfigService.Load(root, sandboxOverride: "workspace-write", approvalOverride: "never");
+            cfg = new CodexConfig(cfg.Home, cfg.Model, cfg.ReasoningEffort, cfg.Provider, "never", "workspace-write", "", "", root, false, 8);
+            var session = CodexSession.Start(cfg, "goal-steer");
+            session.SetGoal("Finish the port");
+            var model = new ScriptedModelClient(
+                [ModelStreamEvent.NewOutputTextDelta("first"), ModelStreamEvent.NewStreamFinished("stop")],
+                [ModelStreamEvent.NewOutputTextDelta("second"), ModelStreamEvent.NewStreamFinished("stop")]);
+            var steer = new RecordingSteerHost("keep going");
+            var sink = new RecordingSink();
+            var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), steer, session.Goal ?? "", session.GoalStatus);
+            var history = new List<HistoryMessage>();
+            await AgentLoop.runTurn(deps, session.Thread.Id, history, "hello", CancellationToken.None);
+            Assert.True(model.Requests.Count >= 2);
+            Assert.Contains(model.Requests[0].Messages, m => m.Content.Contains("Finish the port"));
+            Assert.Contains(model.Requests[1].Messages, m => m.Content.Contains("Finish the port"));
+            Assert.Contains(history, m => m.Role == "user" && m.Content.Contains("keep going"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+
+    [Fact]
+    public void Paused_goal_is_not_injected_into_prompt()
+    {
+        var cfg = ConfigService.Load(Path.GetTempPath());
+        var active = Prompt.buildWithGoal(cfg, [new HistoryMessage("user", "hi", "", "", "")], [], "thr", "Finish the port", ThreadGoal.Active);
+        var paused = Prompt.buildWithGoal(cfg, [new HistoryMessage("user", "hi", "", "", "")], [], "thr", "Finish the port", ThreadGoal.Paused);
+        Assert.Contains(active.Messages, m => m.Content.Contains("Finish the port") && m.Role == "developer");
+        Assert.DoesNotContain(paused.Messages, m => m.Content.Contains("Finish the port") && m.Role == "developer");
+    }
+
+    [Fact]
+    public async Task OptIn_lmstudio_steer_preserves_goal()
+    {
+        if (Environment.GetEnvironmentVariable("CODEXSHARP_E2E_LMSTUDIO") != "1")
+        {
+            return;
+        }
+
+        using var probe = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        HttpResponseMessage response;
+        try
+        {
+            response = await probe.GetAsync("http://127.0.0.1:1234/v1/models");
+        }
+        catch
+        {
+            return;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array || data.GetArrayLength() == 0)
+        {
+            return;
+        }
+
+        var modelId = data[0].GetProperty("id").GetString();
+        if (string.IsNullOrWhiteSpace(modelId))
+        {
+            return;
+        }
+
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-m1-e2e-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(home);
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        Environment.SetEnvironmentVariable("CODEXSHARP_PROVIDER", "lmstudio");
+        Environment.SetEnvironmentVariable("CODEXSHARP_MODEL", modelId);
+        Environment.SetEnvironmentVariable("CODEXSHARP_BASE_URL", "http://127.0.0.1:1234/v1");
+        Environment.SetEnvironmentVariable("CODEXSHARP_API_KEY", "lm-studio");
+        try
+        {
+            await using var hosted = InProcessAppServer.Start();
+            var session = new AppServerSession(hosted.Client);
+            await session.InitializeAsync("codexsharp_e2e", "M1");
+            await session.StartThreadAsync(Path.GetTempPath(), "e2e-goal");
+            await session.SetGoalAsync("Keep this goal text visible");
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            await session.RunTurnToCompletionAsync("Reply with the single word ok.", ct: cts.Token);
+            var after = await session.GetGoalAsync();
+            Assert.Equal("Keep this goal text visible", after.GetProperty("goal").GetProperty("objective").GetString());
+            Assert.Equal(ThreadGoal.Active, after.GetProperty("goal").GetProperty("status").GetString());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+            Environment.SetEnvironmentVariable("CODEXSHARP_PROVIDER", null);
+            Environment.SetEnvironmentVariable("CODEXSHARP_MODEL", null);
+            Environment.SetEnvironmentVariable("CODEXSHARP_BASE_URL", null);
+            Environment.SetEnvironmentVariable("CODEXSHARP_API_KEY", null);
+        }
+    }
+}
+
+file sealed class RecordingSteerHost(string payload) : ISteerHost
+{
+    private int _calls;
+    public string TryDequeue()
+    {
+        _calls++;
+        return _calls == 2 ? payload : "";
     }
 }
 

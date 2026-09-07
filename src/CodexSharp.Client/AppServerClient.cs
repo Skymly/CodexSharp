@@ -233,8 +233,8 @@ public sealed class AppServerSession
     public Task SetNameAsync(string name) =>
         _client.CallAsync(AppServerMethods.ThreadNameSet, new { threadId = ThreadId, name });
 
-    public Task SetGoalAsync(string objective, string? status = null) =>
-        _client.CallAsync(AppServerMethods.ThreadGoalSet, new { threadId = ThreadId, objective, status = status ?? "active" });
+    public Task SetGoalAsync(string? objective = null, string? status = null) =>
+        _client.CallAsync(AppServerMethods.ThreadGoalSet, new { threadId = ThreadId, objective, status });
 
     public Task<JsonElement> GetGoalAsync() =>
         _client.CallAsync(AppServerMethods.ThreadGoalGet, new { threadId = ThreadId });
