@@ -33,6 +33,18 @@ AppServer┘                    │
                               └─ JSONL thread store under ~/.codexsharp
 ```
 
+## Build
+
+NUKE bootstraps the SDK from `global.json` and runs the same targets locally and in CI:
+
+```bash
+./build.ps1 Test      # Windows
+./build.sh Test       # Linux/macOS
+./build.cmd Compile
+```
+
+Default target is `Test` (`Restore` → `Compile` → `Test`). GitHub Actions workflow `.github/workflows/ci.yml` invokes the same entry point.
+
 ## Requirements
 
 - .NET SDK 10

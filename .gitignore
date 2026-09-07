@@ -34,3 +34,6 @@ _*.py
 # Test output
 TestResults/
 *.trx
+
+# NUKE
+.nuke/temp/
