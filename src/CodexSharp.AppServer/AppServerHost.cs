@@ -297,6 +297,7 @@ public sealed class AppServerHost
             case "thread/archive":
             {
                 var threadId = Str(paramsEl, "threadId") ?? "";
+                WorktreeBindings.UnbindAndRemove(threadId);
                 new JsonlThreadStore().Archive(threadId);
                 _threads.Remove(threadId);
                 Notify("thread/archived", new { threadId });
@@ -751,6 +752,7 @@ public sealed class AppServerHost
                     var config = ConfigService.Load(tree.Cwd);
                     var session = CodexSession.Start(config, "worktree");
                     ThreadSources.Set(session.Thread.Id, "worktree");
+                    WorktreeBindings.Bind(session.Thread.Id, tree);
                     Wire(session);
                     _threads[session.Thread.Id] = session;
                     Notify("thread/started", new { thread = ThreadDto(session) });
@@ -2454,6 +2456,7 @@ public sealed class AppServerHost
             case "thread/delete":
             {
                 var threadId = Str(paramsEl, "threadId") ?? "";
+                WorktreeBindings.UnbindAndRemove(threadId);
                 _threads.Remove(threadId);
                 if (!new JsonlThreadStore().Delete(threadId))
                 {
@@ -3593,6 +3596,10 @@ public sealed class AppServerHost
         sandbox = session.Config.SandboxMode,
         approvalPolicy = session.Config.ApprovalPolicy,
         projectId = ProjectStore.ProjectOf(session.Thread.Id),
+        worktree = WorktreeBindings.Find(session.Thread.Id) is { } wt
+            ? new { path = wt.Root, cwd = wt.Cwd, sourceRoot = wt.SourceRoot, branch = wt.Branch, cloudWorktree = "notConfigured" }
+            : null,
+        cloudWorktree = "notConfigured",
         subagents = session.ListSubagents().Select(a => new { id = a.Id, done = a.Done, result = a.Result }).ToArray(),
     };
 
