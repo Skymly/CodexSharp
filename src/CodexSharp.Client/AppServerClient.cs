@@ -618,6 +618,7 @@ public sealed class AppServerSession
             : job
                 ? "Job Object available. Run windowsSandbox/setupStart mode=unelevated to mark ready."
                 : "windowsSandbox status=notConfigured";
+        sandboxNote += " Path policy defaults to workspace-write and is not an OS elevated sandbox.";
         var needsAuth = auth == "no api key";
         var remoteStatus = "disabled";
         try
