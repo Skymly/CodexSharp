@@ -65,9 +65,9 @@ public static class GitProbe
         var others = Git(root, "ls-files --others --exclude-standard", timeoutMs) ?? "";
         var sb = new System.Text.StringBuilder(tracked);
         var empty = OperatingSystem.IsWindows() ? "NUL" : "/dev/null";
-        foreach (var file in others.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        foreach (var file in others.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(12))
         {
-            var piece = Git(root, "diff --no-ext-diff --no-index -- " + Quote(empty) + " " + Quote(file), timeoutMs, allowDiffExit: true);
+            var piece = Git(root, "diff --no-ext-diff --no-index -- " + Quote(empty) + " " + Quote(file), Math.Min(timeoutMs, 3000), allowDiffExit: true);
             if (!string.IsNullOrWhiteSpace(piece))
             {
                 if (sb.Length > 0) sb.Append('\n');

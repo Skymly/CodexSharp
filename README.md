@@ -4,9 +4,12 @@ C# + F# + .NET 10 recreation of the Codex **harness**: a local coding agent with
 
 This is an independent implementation inspired by the public Codex architecture (agent loop, threads/turns/items, app-server JSON-RPC, sandbox + approvals). It is **not** the official OpenAI Codex CLI or Desktop app.
 
+Living inventory of official crates vs this repo: `docs/SOURCE_MAP.md`.
+Desktop capability baseline vs CodexSharp (ChatGPT 26.901): `docs/DESKTOP_REQUIREMENTS.md`.
+
 ## Upstream source
 
-Official Codex is cloned to `vendor/codex` (https://github.com/openai/codex). See `docs/SOURCE_MAP.md`.
+Official Codex is cloned to `vendor/codex` (https://github.com/openai/codex). The clone is gitignored reference material, not a build dependency.
 
 ## Layout
 
@@ -15,19 +18,19 @@ Official Codex is cloned to `vendor/codex` (https://github.com/openai/codex). Se
 | `src/CodexSharp.Protocol` | F# | Threads, turns, items, tool/model contracts |
 | `src/CodexSharp.Core` | F# | Prompt assembly and the agent loop |
 | `src/CodexSharp.Runtime` | C# | Config, persistence, sandbox, tools, HTTP model client |
-| `src/CodexSharp.AppServer` | C# | Bidirectional JSON-RPC host (stdio) |
+| `src/CodexSharp.AppServer` | C# | Bidirectional JSON-RPC host (stdio / ws / unix / in-process) |
 | `src/CodexSharp.Client` | C# | App-server client |
 | `src/CodexSharp.Cli` | C# | `codexsharp` TUI + `exec` + `app-server` |
-| `src/CodexSharp.Desktop` | F# / Avalonia.FuncUI | Desktop app |
+| `src/CodexSharp.Desktop` | F# / Avalonia.FuncUI | Desktop app (JSON-RPC client) |
 
 Hub-and-spoke, same as Codex: every UI talks to one core loop.
 
 ```
 CLI TUI ─┐
-Desktop ─┼─► Runtime ─► Core agent loop ─► Responses / Chat Completions
-AppServer┘         │
-                   ├─ shell / read_file / write_file / apply_patch / update_plan
-                   └─ JSONL thread store under ~/.codexsharp
+Desktop ─┼─► App Server / Runtime ─► Core agent loop ─► Responses / Chat Completions
+AppServer┘                    │
+                              ├─ shell, files, apply_patch, MCP, skills, subagents
+                              └─ JSONL thread store under ~/.codexsharp
 ```
 
 ## Requirements
@@ -73,6 +76,8 @@ Credentials, first match:
 
 Set `wire_api = "responses"` for the OpenAI Responses API, or `chat` for Chat Completions (LM Studio, MiniMax, most local servers).
 
+Feature flags live under `[features]` (`codexsharp features list|enable|disable`). Defaults are off.
+
 ## CLI
 
 ```
@@ -82,44 +87,54 @@ codexsharp exec "prompt"   one shot
 codexsharp app             desktop
 codexsharp app-server [--listen URL]   JSON-RPC (stdio://, ws://IP:PORT, unix://, off)
 codexsharp resume [id]
+codexsharp login|logout|account
 codexsharp doctor          local install / config diagnosis
 codexsharp execpolicy check COMMAND
 codexsharp exec-server     local process/fs JSON-RPC (stdio)
-codexsharp migrate-rollouts
-codexsharp update          independent build; no auto-updater
-codexsharp mcp             list MCP servers
+codexsharp mcp             list | get | add | remove
 codexsharp skills          list | enable | disable
 codexsharp plugin          list / add / remove local plugins
 codexsharp marketplace     list / add / remove local marketplaces
+codexsharp project         list | create | delete
+codexsharp features        list | enable | disable
+codexsharp migrate-rollouts
+codexsharp update          independent build; no auto-updater
 ```
 
-`exec` flags: `--model`, `--sandbox`, `--full-auto`, `--yolo`.
+`exec` flags: `--model`, `--sandbox`, `--full-auto`, `--yolo`, `--json`, `--cd`, `--image`, `--worktree`, `--add-dir`.
 
-TUI slash commands: `/help` `/status` `/new` `/quit`.
+TUI slash commands follow the official set (`/help`, `/status`, `/new`, `/compact`, `/fork`, `/model`, `/sandbox`, ...). Many of them now go through the App Server rather than touching config files directly.
 
 ## App Server
 
-JSONL JSON-RPC, Codex-shaped methods:
+JSONL JSON-RPC, Codex-shaped methods. Transport: stdio, websocket, unix socket, or in-process (Desktop and `exec`).
+
+Core thread/turn surface:
 
 - `initialize` / `initialized`
-- `thread/start` `thread/resume` `thread/list` `thread/archive`
-- `turn/start`
+- `thread/start` `thread/resume` `thread/list` `thread/archive` `thread/fork`
+- `turn/start` `turn/interrupt` `turn/steer`
 - notifications: `thread/started` `turn/started` `item/started` `item/agentMessage/delta` `item/completed` `turn/completed`
 - server request: `item/permissions/requestApproval`
-- `windowsSandbox/readiness` (currently `notConfigured`)
 
-## What is implemented
+The host also exposes account, config, MCP, skills, plugins, projects, fs, git, memory, and sandbox methods. Missing cloud/OS capabilities return honest `notConfigured` / `underDevelopment` rather than fake success. See `docs/SOURCE_MAP.md` for the method map.
 
-- Agent loop: prompt → stream → tools → repeat → assistant message
-- Built-in tools: `shell`, `read_file`, `write_file`, `apply_patch`, `list_dir`, `update_plan`
-- `AGENTS.md` walk from git root to cwd, skill metadata under `skills/**/SKILL.md`
+## What works locally
+
+- Agent loop: prompt -> stream -> tools -> repeat -> assistant message
+- Built-in tools including `shell`, `read_file`, `write_file`, `apply_patch`, `list_dir`, `update_plan`, `grep_files`, `file_search`, plus feature-gated `web_search`, `exec_command`, subagents, MCP resources, and `request_permissions`
+- MCP stdio and Streamable HTTP from `~/.codexsharp/config.toml`; tools appear as `mcp__<server>__<tool>`
+- `AGENTS.md` walk from git root to cwd; skill metadata under `skills/**/SKILL.md`
+- Local plugins and marketplaces under `~/.codexsharp`
 - Approval policies: `untrusted`, `on-request`, `never`
-- Sandbox modes: `read-only`, `workspace-write`, `danger-full-access` (path policy; Windows has no OS seatbelt)
-- Thread persistence as JSONL
+- Sandbox modes: `read-only`, `workspace-write`, `danger-full-access` (path policy; Windows Job Object kill-on-close, no OS seatbelt)
+- Thread persistence as JSONL; resume / fork / archive / rollback / compact
+- In-process subagents (`spawn_agent` / `wait_agent` / ...)
+- Local history compaction (drop old messages past a char threshold; not a model-written summary)
+- ChatGPT device-code and localhost PKCE login (tokens stored locally)
 - Spectre.Console TUI and Avalonia.FuncUI desktop (Desktop is an App Server JSON-RPC client)
-- Built-in `grep_files` / `file_search` (Codex file-search crate analogue)
 
-MCP stdio servers are read from `~/.codexsharp/config.toml`:
+MCP stdio example:
 
 ```toml
 [mcp_servers.docs]
@@ -127,11 +142,28 @@ command = "npx"
 args = ["-y", "mcp-server"]
 ```
 
-Tools appear as `mcp__<server>__<tool>` in the agent loop.
+## Honest stubs
 
-## Not in v0.1
+These APIs exist so clients do not crash, but they do not claim the official cloud/OS feature:
 
-MCP servers, ChatGPT OAuth, OS-level Windows sandbox, compaction, subagents, voice, browser, official protocol schema codegen.
+| Area | Behavior |
+|---|---|
+| `computer_use` / `browser_use` / `realtime` / `guardian` / `code_mode_host` | `notConfigured` / `underDevelopment` |
+| Remote control | status/enable/disable only; no transport |
+| ChatGPT usage / credits | empty or `noCredit` |
+| Cloud worktree / cloud tasks | `notConfigured` |
+| Elevated Windows sandbox | `notConfigured` |
+| MCP OAuth | not configured |
+| Token usage notifications | local `chars/4` estimate, not provider usage |
+| Auto-updater | prints that this is an independent build |
+
+## Not implemented
+
+Official protocol schema codegen, voice/WebRTC sessions, hosted multi-agent, and OS-level sandbox equivalent to Linux landlock / macOS seatbelt.
+
+## Tests
+
+`dotnet test` runs the harness suite (fake `IModelClient`, no live network in the agent loop). Tests are grouped by area under `tests/CodexSharp.Tests/`.
 
 ## License
 

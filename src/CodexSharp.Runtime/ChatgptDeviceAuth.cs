@@ -160,7 +160,9 @@ public static class ChatgptDeviceAuth
 
     public static HttpClient CreateClient()
     {
-        var http = TestHandler is null ? new HttpClient() : new HttpClient(TestHandler, disposeHandler: false);
+        var http = TestHandler is null
+            ? new HttpClient { Timeout = TimeSpan.FromSeconds(20) }
+            : new HttpClient(TestHandler, disposeHandler: false) { Timeout = TimeSpan.FromSeconds(5) };
         http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         return http;
     }
