@@ -2789,6 +2789,40 @@ module MainView =
                                                             ]
                                                         ]
                                                     ]
+                                                    StackPanel.create [
+                                                        StackPanel.orientation Orientation.Horizontal
+                                                        StackPanel.spacing 4.
+                                                        StackPanel.children [
+                                                            Button.create [
+                                                                Button.content "Delete project"
+                                                                Button.onClick (fun _ ->
+                                                                    let pid = state.Current.SelectedProject
+                                                                    if pid.Length > 0 then
+                                                                        async {
+                                                                            do! session.DeleteProjectAsync pid |> Async.AwaitTask |> Async.Ignore
+                                                                            Dispatcher.UIThread.Post(fun () ->
+                                                                                state.Set { state.Current with SelectedProject = "" })
+                                                                            refreshThreads ()
+                                                                        }
+                                                                        |> Async.Start)
+                                                            ]
+                                                            Button.create [
+                                                                Button.content "Explorer"
+                                                                Button.onClick (fun _ ->
+                                                                    let pid = state.Current.SelectedProject
+                                                                    let root =
+                                                                        state.Current.Projects
+                                                                        |> List.tryFind (fun p -> p.Id = pid)
+                                                                        |> Option.map (fun p -> p.Root)
+                                                                        |> Option.defaultValue ""
+                                                                    if root.Length > 0 then
+                                                                        try
+                                                                            Process.Start(FolderLaunch.ExplorerStartInfo root) |> ignore
+                                                                        with ex ->
+                                                                            state.Set { state.Current with Status = ex.Message })
+                                                            ]
+                                                        ]
+                                                    ]
                                                     DockPanel.create [
                                                         DockPanel.children [
                                                             Button.create [

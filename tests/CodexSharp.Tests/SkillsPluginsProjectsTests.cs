@@ -522,6 +522,46 @@ public class ProjectProtocolTests
     }
 
     [Fact]
+    public async Task Start_thread_with_project_uses_primary_root_cwd()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        var root = Path.Combine(Path.GetTempPath(), "codexsharp-proj-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            Directory.CreateDirectory(root);
+            await using var hosted = InProcessAppServer.Start();
+            var session = new AppServerSession(hosted.Client);
+            await session.InitializeAsync();
+            var created = await session.CreateProjectAsync("Desk", root);
+            var id = created.GetProperty("project").GetProperty("id").GetString();
+            Assert.False(string.IsNullOrWhiteSpace(id));
+            await session.StartThreadAsync(cwd: Path.GetTempPath(), title: "bound", projectId: id);
+            var read = await session.ReadThreadAsync();
+            var cwd = read.GetProperty("thread").GetProperty("cwd").GetString();
+            Assert.Equal(Path.GetFullPath(root), Path.GetFullPath(cwd!));
+            Assert.Equal(id, read.GetProperty("thread").GetProperty("projectId").GetString());
+            var listed = await session.LoadThreadsAsync(projectId: id, filterProject: true);
+            Assert.Contains(listed, t => t.Id == session.ThreadId && t.Cwd == Path.GetFullPath(root));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+
+    [Fact]
+    public void Explorer_info_points_at_existing_folder()
+    {
+        var dir = Path.GetTempPath();
+        var info = FolderLaunch.ExplorerStartInfo(dir);
+        Assert.Equal("explorer.exe", info.FileName);
+        Assert.Equal(Path.GetFullPath(dir), info.Arguments);
+        Assert.True(info.UseShellExecute);
+    }
+
+    [Fact]
     public async Task Usage_and_model_provider_alias_and_mcp_oauth_stub()
     {
         await using var hosted = InProcessAppServer.Start();

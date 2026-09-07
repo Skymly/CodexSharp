@@ -64,6 +64,9 @@ public static class ProjectStore
         }
     }
 
+    public static string? PrimaryRoot(string projectId) =>
+        Read(projectId)?.Roots.FirstOrDefault()?.Path;
+
     public static ProjectMutation Create(string name, IEnumerable<string> roots, IReadOnlyDictionary<string, string>? metadata, string idempotencyKey)
     {
         if (string.IsNullOrWhiteSpace(name))

@@ -136,6 +136,24 @@ public sealed class AppServerHost
                 }
 
                 var cwd = Str(paramsEl, "cwd") ?? Environment.CurrentDirectory;
+                string? startProjectId = null;
+                if (paramsEl.ValueKind == JsonValueKind.Object && paramsEl.TryGetProperty("projectId", out var startProject))
+                {
+                    if (!RequireExperimental(id, hasId, "thread/start.projectId")) break;
+                    startProjectId = startProject.ValueKind == JsonValueKind.String ? startProject.GetString() : null;
+                    if (!string.IsNullOrWhiteSpace(startProjectId))
+                    {
+                        var projectRoot = ProjectStore.PrimaryRoot(startProjectId);
+                        if (string.IsNullOrWhiteSpace(projectRoot))
+                        {
+                            Error(id, -32001, "Project not found: " + startProjectId);
+                            break;
+                        }
+
+                        cwd = projectRoot;
+                    }
+                }
+
                 var model = Str(paramsEl, "model");
                 var sandbox = Str(paramsEl, "sandbox") ?? Str(paramsEl, "sandboxMode");
                 var approval = Str(paramsEl, "approvalPolicy");
@@ -147,15 +165,10 @@ public sealed class AppServerHost
                 {
                     ThreadSources.Set(session.Thread.Id, source);
                 }
-                if (paramsEl.ValueKind == JsonValueKind.Object && paramsEl.TryGetProperty("projectId", out var startProject))
+                if (!string.IsNullOrWhiteSpace(startProjectId) && !ProjectStore.Assign(session.Thread.Id, startProjectId))
                 {
-                    if (!RequireExperimental(id, hasId, "thread/start.projectId")) break;
-                    var pid = startProject.ValueKind == JsonValueKind.String ? startProject.GetString() : null;
-                    if (!string.IsNullOrWhiteSpace(pid) && !ProjectStore.Assign(session.Thread.Id, pid))
-                    {
-                        Error(id, -32001, "Project not found: " + pid);
-                        break;
-                    }
+                    Error(id, -32001, "Project not found: " + startProjectId);
+                    break;
                 }
                 Wire(session);
                 _threads[session.Thread.Id] = session;
