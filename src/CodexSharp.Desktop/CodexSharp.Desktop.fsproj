@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RootNamespace>CodexSharp.Desktop</RootNamespace>
+    <AssemblyName>CodexSharp.Desktop</AssemblyName>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="MainView.fs" />
+    <Compile Include="Program.fs" />
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.1" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.1" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.1" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.1" />
+    <PackageReference Include="Avalonia.FuncUI" Version="2.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CodexSharp.Runtime\CodexSharp.Runtime.csproj" />
+    <ProjectReference Include="..\CodexSharp.Client\CodexSharp.Client.csproj" />
+    <ProjectReference Include="..\CodexSharp.AppServer\CodexSharp.AppServer.csproj" />
+    <ProjectReference Include="..\CodexSharp.Protocol\CodexSharp.Protocol.fsproj" />
+  </ItemGroup>
+  <Target Name="CopyCodexSharpCli" AfterTargets="Build">
+    <MSBuild Projects="..\CodexSharp.Cli\CodexSharp.Cli.csproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework)" />
+    <ItemGroup>
+      <_CliOut Include="..\CodexSharp.Cli\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_CliOut)" DestinationFolder="$(OutputPath)%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

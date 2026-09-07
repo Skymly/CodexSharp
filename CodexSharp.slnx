@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CodexSharp.AppServer/CodexSharp.AppServer.csproj" />
+    <Project Path="src/CodexSharp.Cli/CodexSharp.Cli.csproj" />
+    <Project Path="src/CodexSharp.Client/CodexSharp.Client.csproj" />
+    <Project Path="src/CodexSharp.Core/CodexSharp.Core.fsproj" />
+    <Project Path="src/CodexSharp.Desktop/CodexSharp.Desktop.fsproj" />
+    <Project Path="src/CodexSharp.Protocol/CodexSharp.Protocol.fsproj" />
+    <Project Path="src/CodexSharp.Runtime/CodexSharp.Runtime.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CodexSharp.Tests/CodexSharp.Tests.csproj" />
+  </Folder>
+</Solution>

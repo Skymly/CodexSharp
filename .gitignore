@@ -1,0 +1,36 @@
+# Build
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+.vs/
+.idea/
+*.DotSettings.user
+
+# Avalonia
+*.nupkg
+
+# CodexSharp local state (never commit secrets)
+.codexsharp/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Upstream clone build artifacts
+vendor/codex/**/target/
+vendor/codex/**/node_modules/
+
+
+# Upstream clone
+vendor/codex/
+
+# Scratch scripts
+_*.py
+
+# Test output
+TestResults/
+*.trx

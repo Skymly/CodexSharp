@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CodexSharp.Protocol\CodexSharp.Protocol.fsproj" />
+    <ProjectReference Include="..\..\src\CodexSharp.Core\CodexSharp.Core.fsproj" />
+    <ProjectReference Include="..\..\src\CodexSharp.Runtime\CodexSharp.Runtime.csproj" />
+    <ProjectReference Include="..\..\src\CodexSharp.AppServer\CodexSharp.AppServer.csproj" />
+    <ProjectReference Include="..\..\src\CodexSharp.Client\CodexSharp.Client.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>
