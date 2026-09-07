@@ -3243,19 +3243,45 @@ internal static class Tui
             if (input.StartsWith("/goal", StringComparison.Ordinal))
             {
                 var rest = input.Length > 5 ? input[5..].Trim() : "";
-                if (rest.Length == 0)
+                var cmd = GoalSlash.parse(rest);
+                if (cmd.IsShow)
                 {
-                    AnsiConsole.MarkupLine(string.IsNullOrWhiteSpace(session.Goal) ? "[grey]no goal[/]" : Markup.Escape(session.Goal));
+                    session.SyncGoal();
+                    AnsiConsole.MarkupLine(FormatGoalLine(session));
                 }
-                else if (rest is "clear")
+                else if (cmd.IsClear)
                 {
                     session.ClearGoal();
                     AnsiConsole.MarkupLine("[grey]goal cleared[/]");
                 }
-                else
+                else if (cmd.IsPause)
                 {
-                    session.SetGoal(rest);
-                    AnsiConsole.MarkupLine($"[yellow]goal:[/] {Markup.Escape(rest)}");
+                    if (string.IsNullOrWhiteSpace(session.Goal))
+                    {
+                        AnsiConsole.MarkupLine("[grey]no goal[/]");
+                    }
+                    else
+                    {
+                        session.SetGoal(null, ThreadGoal.Paused);
+                        AnsiConsole.MarkupLine($"[yellow]goal paused:[/] {Markup.Escape(session.Goal ?? "")}");
+                    }
+                }
+                else if (cmd.IsResume)
+                {
+                    if (string.IsNullOrWhiteSpace(session.Goal))
+                    {
+                        AnsiConsole.MarkupLine("[grey]no goal[/]");
+                    }
+                    else
+                    {
+                        session.SetGoal(null, ThreadGoal.Active);
+                        AnsiConsole.MarkupLine($"[yellow]goal:[/] {Markup.Escape(session.Goal ?? "")}");
+                    }
+                }
+                else if (cmd is GoalSlash.Command.Set set)
+                {
+                    session.SetGoal(set.Item, ThreadGoal.Active);
+                    AnsiConsole.MarkupLine($"[yellow]goal:[/] {Markup.Escape(set.Item)}");
                 }
                 continue;
             }
@@ -3415,6 +3441,22 @@ internal static class Tui
         return true;
     }
 
+    private static string FormatGoalLine(TuiAgent session)
+    {
+        try
+        {
+            session.SyncGoal();
+        }
+        catch
+        {
+            // keep last cached goal
+        }
+
+        return string.IsNullOrWhiteSpace(session.Goal)
+            ? "[grey]goal[/] none"
+            : $"[grey]goal[/] {Markup.Escape(session.GoalStatus)}  {Markup.Escape(session.Goal)}";
+    }
+
     private static void RenderBanner(TuiAgent session)
     {
         var cfg = session.Config;
@@ -3424,6 +3466,7 @@ internal static class Tui
             $"[grey]thread[/] {session.Thread.Id}   [grey]model[/] {Markup.Escape(cfg.Model)}   [grey]provider[/] {Markup.Escape(cfg.Provider.Id)} ({key})");
         AnsiConsole.MarkupLine(
             $"[grey]sandbox[/] {Markup.Escape(cfg.SandboxMode)}   [grey]approval[/] {Markup.Escape(cfg.ApprovalPolicy)}   [grey]cwd[/] {Markup.Escape(cfg.Cwd)}");
+        AnsiConsole.MarkupLine(FormatGoalLine(session));
         var status = TuiStatus.Line(session.Config, session.Thread.Id, session.Thread.Title);
         if (!string.IsNullOrWhiteSpace(status))
             AnsiConsole.MarkupLine($"[grey]status[/] {Markup.Escape(status)}");

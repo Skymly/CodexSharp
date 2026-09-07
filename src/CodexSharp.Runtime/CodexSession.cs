@@ -161,6 +161,72 @@ public sealed class JsonlThreadStore
         return last ?? [];
     }
 
+    public void SaveGoal(string threadId, string? objective, string status)
+    {
+        var info = Find(threadId);
+        if (info is null)
+        {
+            return;
+        }
+
+        Append(info, new
+        {
+            type = "goal_snapshot",
+            ts = DateTimeOffset.UtcNow,
+            objective,
+            status,
+        });
+    }
+
+    public (string? Objective, string Status) LoadGoal(string threadId)
+    {
+        var info = Find(threadId);
+        if (info is null || !File.Exists(info.Path))
+        {
+            return (null, ThreadGoal.Cleared);
+        }
+
+        string? objective = null;
+        var status = ThreadGoal.Cleared;
+        foreach (var line in File.ReadLines(info.Path))
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(line);
+                if (!doc.RootElement.TryGetProperty("type", out var type)
+                    || type.GetString() != "goal_snapshot")
+                {
+                    continue;
+                }
+
+                objective = doc.RootElement.TryGetProperty("objective", out var obj)
+                    && obj.ValueKind == JsonValueKind.String
+                    ? obj.GetString()
+                    : null;
+                status = doc.RootElement.TryGetProperty("status", out var st)
+                    && st.ValueKind == JsonValueKind.String
+                    ? ThreadGoal.normalizeStatus(st.GetString() ?? "")
+                    : ThreadGoal.Cleared;
+            }
+            catch
+            {
+                // skip corrupt lines
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(objective) || status == ThreadGoal.Cleared)
+        {
+            return (null, ThreadGoal.Cleared);
+        }
+
+        return (objective, status);
+    }
+
     public string? FindLastPatch(string threadId)
     {
         static string? Extract(string text)
@@ -397,7 +463,7 @@ public sealed class CodexSession
     public InteractiveUserInput McpElicitation => _mcpElicit;
     public IReadOnlyList<HistoryMessage> History => _history;
     public string? Goal { get; private set; }
-    public string GoalStatus { get; private set; } = "active";
+    public string GoalStatus { get; private set; } = ThreadGoal.Cleared;
     public string? ActiveTurnId { get; private set; }
 
     public bool TrySteer(string text)
@@ -433,6 +499,7 @@ public sealed class CodexSession
         var thread = store.Find(threadId) ?? throw new InvalidOperationException($"Unknown thread {threadId}");
         var session = new CodexSession(config, thread);
         session.RestoreHistory(store.LoadHistory(threadId));
+        session.RestoreGoal(store.LoadGoal(threadId));
         return session;
     }
 
@@ -458,11 +525,47 @@ public sealed class CodexSession
         return ok;
     }
 
-    public void SetGoal(string objective, string? status = null)
+    public void SetGoal(string? objective, string? status = null)
     {
-        Goal = objective;
-        GoalStatus = status ?? "active";
+        var hasObjective = !string.IsNullOrWhiteSpace(objective);
+        var hasStatus = !string.IsNullOrWhiteSpace(status);
+        var nextStatus = hasStatus
+            ? ThreadGoal.normalizeStatus(status)
+            : hasObjective ? ThreadGoal.Active : GoalStatus;
+
+        if (nextStatus == ThreadGoal.Cleared)
+        {
+            ClearGoal();
+            return;
+        }
+
+        if (hasObjective)
+        {
+            Goal = objective!.Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(Goal))
+        {
+            return;
+        }
+
+        GoalStatus = nextStatus;
+        PersistGoal();
     }
+
+    public void RestoreGoal((string? Objective, string Status) goal)
+    {
+        Goal = string.IsNullOrWhiteSpace(goal.Objective) ? null : goal.Objective;
+        GoalStatus = string.IsNullOrWhiteSpace(Goal) ? ThreadGoal.Cleared : ThreadGoal.normalizeStatus(goal.Status);
+    }
+
+    public object? GoalDto() =>
+        string.IsNullOrWhiteSpace(Goal)
+            ? null
+            : new { threadId = _thread.Id, objective = Goal, status = GoalStatus };
+
+    private void PersistGoal() =>
+        _store.SaveGoal(_thread.Id, Goal, GoalStatus);
 
     public void SetName(string name)
     {
@@ -535,7 +638,8 @@ public sealed class CodexSession
     public void ClearGoal()
     {
         Goal = null;
-        GoalStatus = "cleared";
+        GoalStatus = ThreadGoal.Cleared;
+        PersistGoal();
     }
 
     public bool ResolveApproval(string requestId, bool allow, string? reason = null) =>
@@ -595,7 +699,7 @@ public sealed class CodexSession
             return await child.RunTurnAsync(message, childCt);
         }, new ConfigHookHost(_config.Home, _config.Cwd));
         _collab.Inner = hub;
-        var deps = new AgentDeps(_config, model, _collab, _approver, _sink, hub.ExtraTools, new ConfigHookHost(_config.Home, _config.Cwd), _userInput, new QueueSteerHost(_steerQueue));
+        var deps = new AgentDeps(_config, model, _collab, _approver, _sink, hub.ExtraTools, new ConfigHookHost(_config.Home, _config.Cwd), _userInput, new QueueSteerHost(_steerQueue), Goal ?? "", GoalStatus);
         HookRunner.Run(_config.Home, "UserPromptSubmit", new { type = "UserPromptSubmit", threadId = _thread.Id, text = userText }, _config.Cwd);
         Interlocked.Increment(ref _inTurn);
         try
@@ -631,7 +735,7 @@ public sealed class CodexSession
         IToolExecutor inner = new BuiltinToolExecutor(_config);
         await using var hub = await McpHub.StartAsync(_config, inner, ct);
         var snapshot = new List<HistoryMessage>(_history);
-        var deps = new AgentDeps(_config, model, inner, _approver, new NullSink(), hub.ExtraTools, new ConfigHookHost(_config.Home, _config.Cwd), _userInput, new NoopSteerHost());
+        var deps = new AgentDeps(_config, model, inner, _approver, new NullSink(), hub.ExtraTools, new ConfigHookHost(_config.Home, _config.Cwd), _userInput, new NoopSteerHost(), "", "");
         Interlocked.Increment(ref _inTurn);
         try
         {
@@ -819,7 +923,7 @@ public sealed class CodexSession
 
     public Task<string> RunTurnWithAsync(IModelClient model, IToolExecutor? tools, IApprover? approver, string userText, CancellationToken ct = default)
     {
-        var deps = new AgentDeps(_config, model, tools ?? new BuiltinToolExecutor(_config, (id, chunk) => _sink.Emit(AgentEvent.NewCommandOutputDelta(id, chunk)), EstimateTokens, _unified), approver ?? _approver, _sink, [], new ConfigHookHost(_config.Home, _config.Cwd), _userInput, new QueueSteerHost(_steerQueue));
+        var deps = new AgentDeps(_config, model, tools ?? new BuiltinToolExecutor(_config, (id, chunk) => _sink.Emit(AgentEvent.NewCommandOutputDelta(id, chunk)), EstimateTokens, _unified), approver ?? _approver, _sink, [], new ConfigHookHost(_config.Home, _config.Cwd), _userInput, new QueueSteerHost(_steerQueue), Goal ?? "", GoalStatus);
         HookRunner.Run(_config.Home, "UserPromptSubmit", new { type = "UserPromptSubmit", threadId = _thread.Id, text = userText }, _config.Cwd);
         Interlocked.Increment(ref _inTurn);
         try

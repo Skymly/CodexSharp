@@ -410,12 +410,16 @@ The sandbox applies to CodexSharp built-in tools. External MCP tools are not san
         else
             "Available skills (read the SKILL.md with read_file before using one):\n" + String.Join("\n\n", rows)
 
-    let buildWithTools (cfg: CodexConfig) (history: HistoryMessage[]) (extraTools: ToolSpec[]) (threadId: string) =
+    let buildWithGoal (cfg: CodexConfig) (history: HistoryMessage[]) (extraTools: ToolSpec[]) (threadId: string) (goalObjective: string) (goalStatus: string) =
         let messages = ResizeArray<HistoryMessage>()
         messages.Add(HistoryMessage.developer (permissions cfg))
 
         if not (String.IsNullOrWhiteSpace cfg.DeveloperInstructions) then
             messages.Add(HistoryMessage.developer cfg.DeveloperInstructions)
+
+        let goal = ThreadGoal.promptBlock goalObjective goalStatus
+        if not (String.IsNullOrWhiteSpace goal) then
+            messages.Add(HistoryMessage.developer goal)
 
         let agents = loadAgentsMarkdown cfg.Cwd
         if not (String.IsNullOrWhiteSpace agents) then
@@ -440,5 +444,8 @@ The sandbox applies to CodexSharp built-in tools. External MCP tools are not san
           Messages = messages.ToArray()
           Tools = Array.append BuiltinTools.all extraTools
           ReasoningEffort = cfg.ReasoningEffort }
+
+    let buildWithTools (cfg: CodexConfig) (history: HistoryMessage[]) (extraTools: ToolSpec[]) (threadId: string) =
+        buildWithGoal cfg history extraTools threadId "" ""
 
     let build cfg history = buildWithTools cfg history [||] ""

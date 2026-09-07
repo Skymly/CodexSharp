@@ -238,3 +238,5 @@ module AppServerNotifications =
     let FsChanged = "fs/changed"
     let FuzzyFileSearchSessionUpdated = "fuzzyFileSearch/sessionUpdated"
     let FuzzyFileSearchSessionCompleted = "fuzzyFileSearch/sessionCompleted"
+    let ThreadGoalUpdated = "thread/goal/updated"
+    let ThreadGoalCleared = "thread/goal/cleared"
