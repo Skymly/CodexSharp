@@ -377,3 +377,79 @@ public class MemoryListAndPromptDebugTests
     }
 }
 
+
+public class WorkspaceWritePathPolicyTests
+{
+    [Fact]
+    public void Default_config_sandbox_is_workspace_write()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        var cwd = Path.Combine(Path.GetTempPath(), "codexsharp-cwd-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            Directory.CreateDirectory(cwd);
+            var cfg = ConfigService.Load(cwd);
+            Assert.Equal("workspace-write", cfg.SandboxMode);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+
+    [Fact]
+    public async Task Fake_client_write_file_outside_workspace_is_denied()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        var cwd = Path.Combine(Path.GetTempPath(), "codexsharp-cwd-" + Guid.NewGuid().ToString("N"));
+        var outsideDir = Path.Combine(Path.GetTempPath(), "codexsharp-out-" + Guid.NewGuid().ToString("N"));
+        var outside = Path.Combine(outsideDir, "leak.txt");
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            Directory.CreateDirectory(cwd);
+            Directory.CreateDirectory(outsideDir);
+            var cfg = ConfigService.Load(cwd, sandboxOverride: "workspace-write", approvalOverride: "never");
+            cfg = new CodexConfig(cfg.Home, cfg.Model, cfg.ReasoningEffort, cfg.Provider, "never", "workspace-write", "", "", cwd, false, 8);
+            var args = JsonSerializer.Serialize(new { path = outside, content = "nope" });
+            var model = new ScriptedModelClient(
+                [ModelStreamEvent.NewToolCallReady(new ToolCallRequest("w1", "write_file", args)), ModelStreamEvent.NewStreamFinished("tool")],
+                [ModelStreamEvent.NewOutputTextDelta("ok"), ModelStreamEvent.NewStreamFinished("stop")]);
+            var sink = new RecordingSink();
+            var deps = new AgentDeps(cfg, model, new BuiltinToolExecutor(cfg), new AutoApprover(true), sink, [], new NoopHookHost(), new NoopUserInputHost(), new NoopSteerHost());
+            var history = new List<HistoryMessage>();
+            await AgentLoop.runTurn(deps, "thr_sandbox", history, "write outside", CancellationToken.None);
+            Assert.Contains(history, m => m.Role == "tool" && m.Content.Contains("outside workspace", StringComparison.OrdinalIgnoreCase));
+            Assert.False(File.Exists(outside));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+
+    [Fact]
+    public async Task Chrome_sandbox_note_is_not_elevated()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            await using var hosted = InProcessAppServer.Start();
+            var session = new AppServerSession(hosted.Client);
+            await session.InitializeAsync();
+            var chrome = await session.LoadChromeAsync();
+            Assert.Contains("workspace-write", chrome.SandboxNote, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("not an OS elevated sandbox", chrome.SandboxNote, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("elevated sandbox enabled", chrome.SandboxNote, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+}
