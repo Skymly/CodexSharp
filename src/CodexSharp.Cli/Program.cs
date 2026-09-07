@@ -1683,7 +1683,7 @@ internal static class Tui
     private static bool UseLive;
     private static TuiAgent? LiveSession;
     private static readonly string[] SlashCommands =
-        ("/q /quit /exit /help /clear /stop /experimental /doctor /usage /pwd /execpolicy /plugins /prompts /subagents /memory /memories /resume /agents /app /apply /export /recap /mention /debug-config /ps /apps /ide /rollout /raw /statusline /title /theme /notifications /vim /keymap /pets /pet /setup-default-sandbox /approve /side /btw /sandbox-add-read-dir /plan /default /pair /cd /init /logout /copy /import /delete /worktree /status /model /approvals /permissions /personality /sandbox /exec /new /compact /fork /pin /archive /search /rollback /skills /hooks /feedback /diff /review /effort /name /rename /goal /mcp /history /queue").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        ("/q /quit /exit /help /clear /stop /experimental /doctor /usage /pwd /execpolicy /plugins /prompts /subagents /memory /memories /resume /agents /app /apply /export /recap /mention /debug-config /ps /apps /ide /rollout /raw /statusline /title /theme /notifications /vim /keymap /pets /pet /cloud /cloud-environment /setup-default-sandbox /approve /side /btw /sandbox-add-read-dir /plan /default /pair /cd /init /logout /copy /import /delete /worktree /status /model /approvals /permissions /personality /sandbox /exec /new /compact /fork /pin /archive /search /rollback /skills /hooks /feedback /diff /review /effort /name /rename /goal /mcp /history /queue").Split(' ', StringSplitOptions.RemoveEmptyEntries);
     public static async Task<int> RunAsync(string? opening, CodexConfig? config = null) => await RunSessionAsync(await TuiAgent.StartAsync(config), opening);
 
     public static async Task<int> ResumeAsync(params string[] args)
@@ -2587,11 +2587,21 @@ internal static class Tui
                 continue;
             }
 
-            if (input.StartsWith("/pets", StringComparison.Ordinal) || input == "/pet" || input.StartsWith("/pet ", StringComparison.Ordinal))
+            if (input is "/cloud" || input.StartsWith("/cloud ", StringComparison.Ordinal) || input.StartsWith("/cloud-", StringComparison.Ordinal))
             {
-                var rest = input.StartsWith("/pets", StringComparison.Ordinal)
-                    ? (input.Length > 5 ? input[5..].Trim() : "")
-                    : (input.Length > 4 ? input[4..].Trim() : "");
+                AnsiConsole.MarkupLine("[yellow]" + Markup.Escape(HonestStubs.CloudSlashMessage()) + "[/]");
+                continue;
+            }
+
+            if (input is "/pet" || input.StartsWith("/pet ", StringComparison.Ordinal))
+            {
+                AnsiConsole.MarkupLine("[yellow]" + Markup.Escape(HonestStubs.PetOverlayMessage()) + "[/]");
+                continue;
+            }
+
+            if (input.StartsWith("/pets", StringComparison.Ordinal))
+            {
+                var rest = input.Length > 5 ? input[5..].Trim() : "";
                 try
                 {
                     if (rest.Length == 0)

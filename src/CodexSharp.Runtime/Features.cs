@@ -37,13 +37,17 @@ public static class FeatureFlags
         foreach (var name in Known)
         {
             map[name] = table.TryGetValue(name, out var value) && value is true;
+            if (HonestStubs.IsLockedFeature(name))
+            {
+                map[name] = false;
+            }
         }
 
         foreach (var (key, value) in table)
         {
             if (value is bool flag)
             {
-                map[key] = flag;
+                map[key] = HonestStubs.IsLockedFeature(key) ? false : flag;
             }
         }
 
@@ -55,6 +59,11 @@ public static class FeatureFlags
 
     public static void Set(string name, bool enabled)
     {
+        if (HonestStubs.IsLockedFeature(name))
+        {
+            enabled = false;
+        }
+
         CodexPaths.EnsureLayout();
         var text = CodexPaths.ReadConfigText();
         if (!text.Contains("[features]", StringComparison.Ordinal))
