@@ -140,7 +140,8 @@ type ScreenState =
       TuiRaw: string
       TuiTitle: string
       GoalObjective: string
-      GoalStatus: string }
+      GoalStatus: string
+      SkillHits: string list }
 
 module MainView =
 
@@ -706,7 +707,8 @@ module MainView =
                           TuiRaw = ""
                           TuiTitle = ""
                           GoalObjective = ""
-                          GoalStatus = "cleared" }
+                          GoalStatus = "cleared"
+                          SkillHits = [] }
                     let model =
                         { Screen = screen
                           ApiKey = ""
@@ -1871,6 +1873,7 @@ module MainView =
                     else
                         addNote "error" "Unknown command. Type /help"
                 elif text <> "" then
+                    let text = SkillSlash.Expand(text, CodexPaths.Home, Environment.CurrentDirectory)
                     if state.Current.Busy then
                         wipeComposerBuffer ()
                         state.Set { state.Current with Composer = ""; VimMode = "insert" }
@@ -3419,6 +3422,21 @@ module MainView =
                                                     StackPanel.create [
                                                         StackPanel.spacing 4.
                                                         StackPanel.children (
+                                                            state.Current.SkillHits
+                                                            |> List.map (fun name ->
+                                                                Button.create [
+                                                                    Button.content ("$" + name)
+                                                                    Button.onClick (fun _ ->
+                                                                        let src = state.Current.Composer
+                                                                        let dollar = src.LastIndexOf('$')
+                                                                        let next = if dollar >= 0 then src.Substring(0, dollar) + "$" + name + " " else src + "$" + name + " "
+                                                                        state.Set { state.Current with Composer = next; SkillHits = [] })
+                                                                ] :> IView)
+                                                        )
+                                                    ]
+                                                    StackPanel.create [
+                                                        StackPanel.spacing 4.
+                                                        StackPanel.children (
                                                             state.Current.Mentions
                                                             |> List.map (fun path ->
                                                                 Button.create [
@@ -3480,7 +3498,11 @@ module MainView =
                                                                 TextBox.background Theme.bg
                                                                 TextBox.foreground Theme.text
                                                                 TextBox.onTextChanged (fun t ->
-                                                                    state.Set { state.Current with Composer = t; SlashHits = slashHits t }
+                                                                    let skills =
+                                                                        SkillSlash.Hits(t, CodexPaths.Home, Environment.CurrentDirectory)
+                                                                        |> Seq.map (fun s -> s.Name)
+                                                                        |> Seq.toList
+                                                                    state.Set { state.Current with Composer = t; SlashHits = slashHits t; SkillHits = skills }
                                                                     async {
                                                                         try
                                                                             let! hits = session.MentionHitsAsync(t) |> Async.AwaitTask
