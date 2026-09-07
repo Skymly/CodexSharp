@@ -39,10 +39,41 @@ public class SkillCatalogTests
             File.WriteAllText(Path.Combine(skillDir, "SKILL.md"), "# Secret\nDo not load until trusted.\n");
             var untrusted = SkillCatalog.Load(home, cwd);
             Assert.DoesNotContain(untrusted, s => s.Name == "secret");
+            Assert.DoesNotContain(SkillSlash.Hits("$sec", home, cwd), s => s.Name == "secret");
             ProjectTrust.Trust(cwd);
             Assert.True(ProjectTrust.IsTrusted(cwd));
             var trusted = SkillCatalog.Load(home, cwd);
             Assert.Contains(trusted, s => s.Name == "secret");
+            Assert.Contains(SkillSlash.Hits("$sec", home, cwd), s => s.Name == "secret");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+
+    [Fact]
+    public void Dollar_hits_only_enabled_skills_and_expand_loads_markdown()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            var onDir = Path.Combine(home, "skills", "demo");
+            var offDir = Path.Combine(home, "skills", "hidden");
+            Directory.CreateDirectory(onDir);
+            Directory.CreateDirectory(offDir);
+            File.WriteAllText(Path.Combine(onDir, "SKILL.md"), "# Demo\nDo the thing.\n");
+            File.WriteAllText(Path.Combine(offDir, "SKILL.md"), "# Hidden\nStay off.\n");
+            SkillConfig.Set("hidden", Path.Combine(offDir, "SKILL.md"), false);
+            var hits = SkillSlash.Hits("$de", home, home);
+            Assert.Contains(hits, s => s.Name == "demo");
+            Assert.DoesNotContain(hits, s => s.Name == "hidden");
+            Assert.Empty(SkillSlash.Hits("hello", home, home));
+            var expanded = SkillSlash.Expand("$demo please", home, home);
+            Assert.Contains("Do the thing", expanded);
+            Assert.Contains("please", expanded);
+            Assert.DoesNotContain("$demo", expanded);
         }
         finally
         {

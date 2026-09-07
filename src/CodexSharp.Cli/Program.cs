@@ -3394,6 +3394,7 @@ internal static class Tui
             }
 
             liveTurn = new CancellationTokenSource();
+            input = SkillSlash.Expand(input, session.Config.Home, session.Config.Cwd);
             AnsiConsole.MarkupLine("[grey]▸ working[/]  " + Markup.Escape(TuiStatus.Line(session.Config, session.Thread.Id, session.Thread.Title)));
             try
             {
