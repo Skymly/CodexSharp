@@ -1,5 +1,7 @@
 # Source map
 
+ChatGPT 桌面端能力基线与 CodexSharp 差距见 `docs/DESKTOP_REQUIREMENTS.md`。
+
 Official Codex lives at `vendor/codex` (shallow clone of https://github.com/openai/codex).
 This is an independent C#/F# recreation, not a line-for-line port.
 
