@@ -248,6 +248,71 @@ public class WorktreeSessionTests
     }
 }
 
+public class ThreadHandoffTests
+{
+    [Fact]
+    public async Task Toggles_local_and_worktree_without_double_checkout()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        var repo = Path.Combine(Path.GetTempPath(), "codexsharp-repo-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            Directory.CreateDirectory(repo);
+            File.WriteAllText(Path.Combine(repo, "README.md"), "hi");
+            RunGit(repo, "init");
+            RunGit(repo, "config user.email t@t");
+            RunGit(repo, "config user.name t");
+            RunGit(repo, "add README.md");
+            RunGit(repo, "commit -m init");
+
+            await using var hosted = InProcessAppServer.Start();
+            var session = new AppServerSession(hosted.Client);
+            await session.InitializeAsync("test", "Test");
+            var threadId = await session.StartThreadAsync(repo, "handoff");
+
+            var cloud = await session.HandoffAsync("cloud");
+            Assert.Equal("notConfigured", cloud.GetProperty("cloudHandoff").GetString());
+            Assert.Equal("notConfigured", cloud.GetProperty("crossHost").GetString());
+
+            var toWork = await session.HandoffAsync();
+            Assert.Equal("worktree", toWork.GetProperty("mode").GetString());
+            var workCwd = toWork.GetProperty("cwd").GetString()!;
+            Assert.True(Directory.Exists(workCwd));
+            Assert.False(ThreadHandoff.IsUnder(workCwd, repo));
+            Assert.False(ThreadHandoff.SameBranchCheckedOutTwice(repo));
+            Assert.Equal("notConfigured", toWork.GetProperty("cloudHandoff").GetString());
+
+            var back = await session.HandoffAsync();
+            Assert.Equal("local", back.GetProperty("mode").GetString());
+            Assert.True(ThreadHandoff.IsUnder(back.GetProperty("cwd").GetString()!, repo));
+            Assert.Equal(threadId, session.ThreadId);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+            try { Directory.Delete(repo, true); } catch { }
+        }
+    }
+
+    private static void RunGit(string cwd, string args)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo("git")
+        {
+            WorkingDirectory = cwd,
+            Arguments = args,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        using var p = System.Diagnostics.Process.Start(psi)!;
+        p.WaitForExit(15000);
+        Assert.Equal(0, p.ExitCode);
+    }
+}
+
 public class ExternalAgentImportTests
 {
     [Fact]

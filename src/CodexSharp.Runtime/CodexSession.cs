@@ -591,6 +591,18 @@ public sealed class CodexSession
             _config.MaxTurns);
     }
 
+    public void SetCwd(string cwd)
+    {
+        if (string.IsNullOrWhiteSpace(cwd))
+        {
+            return;
+        }
+
+        var full = Path.GetFullPath(cwd);
+        ApplySettings(cwd: full);
+        _thread = _thread with { Cwd = full };
+    }
+
     public void SetCollaborationMode(string mode, bool persist = true)
     {
         mode = CollaborationModes.Normalize(mode);
