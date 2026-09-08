@@ -56,4 +56,19 @@ public class DesktopCommandsTests
 
         Assert.Equal(items.Count, DesktopCommands.Filter(items, " ").Count);
     }
+
+    [Fact]
+    public void Alt_number_switches_local_shell_mode()
+    {
+        Assert.Equal("codex", DesktopCommands.DefaultShellMode);
+        Assert.Equal(DesktopCommands.ShellChat, DesktopCommands.Match("alt+1"));
+        Assert.Equal(DesktopCommands.ShellChat, DesktopCommands.Match("alt+d1"));
+        Assert.Equal(DesktopCommands.ShellWork, DesktopCommands.Match("alt+2"));
+        Assert.Equal(DesktopCommands.ShellWork, DesktopCommands.Match("alt+d2"));
+        Assert.Equal(DesktopCommands.ShellCodex, DesktopCommands.Match("alt+3"));
+        Assert.Equal(DesktopCommands.ShellCodex, DesktopCommands.Match("alt+d3"));
+        Assert.Contains(DesktopCommands.DefaultBindings, b => b.Keys == "alt+1" && b.Action == DesktopCommands.ShellChat);
+        Assert.Contains(DesktopCommands.DefaultBindings, b => b.Keys == "alt+2" && b.Action == DesktopCommands.ShellWork);
+        Assert.Contains(DesktopCommands.DefaultBindings, b => b.Keys == "alt+3" && b.Action == DesktopCommands.ShellCodex);
+    }
 }

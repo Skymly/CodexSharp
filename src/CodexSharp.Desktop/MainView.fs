@@ -61,6 +61,11 @@ type ThreadRow = { Id: string; Title: string; Subtitle: string; Pinned: bool; Se
 
 type SectionRow = { Id: string; Name: string }
 type ProjectRow = { Id: string; Name: string; Root: string }
+
+type ShellMode =
+    | Chat
+    | Work
+    | Codex
 type SkillRow = { Name: string; Path: string; Enabled: bool }
 type HookRow = { Name: string; Event: string }
 type FeatureRow = { Name: string; Enabled: bool; Stage: string }
@@ -147,6 +152,7 @@ type ScreenState =
       PaletteQuery: string
       PaletteIndex: int
       ShowSidebar: bool
+      ShellMode: ShellMode
       ShowTerminal: bool
       ShowActivity: bool
       ActivityFilter: string
@@ -751,6 +757,7 @@ module MainView =
                           PaletteQuery = ""
                           PaletteIndex = 0
                           ShowSidebar = true
+                          ShellMode = Codex
                           ShowTerminal = true
                           ShowActivity = false
                           ActivityFilter = ""
@@ -813,10 +820,12 @@ module MainView =
                 async {
                     try
                         let archived = state.Current.ShowArchived
+                        let chatUnassigned = state.Current.ShellMode = Chat
                         let projectId = state.Current.SelectedProject
-                        let filterProject = not (String.IsNullOrWhiteSpace projectId)
+                        let filterProject = chatUnassigned || not (String.IsNullOrWhiteSpace projectId)
+                        let listProjectId = if chatUnassigned then null else if filterProject then projectId else null
                         let cwd = if state.Current.ShowAllThreads then null else Environment.CurrentDirectory
-                        let! threads = session.LoadThreadsAsync(archived, 50, (if filterProject then projectId else null), filterProject, cwd) |> Async.AwaitTask
+                        let! threads = session.LoadThreadsAsync(archived, 50, listProjectId, filterProject, cwd) |> Async.AwaitTask
                         let! sections = session.LoadSectionsAsync() |> Async.AwaitTask
                         let! projects = session.LoadProjectsAsync() |> Async.AwaitTask
                         let rows =
@@ -2154,6 +2163,20 @@ module MainView =
                         e.Handled <- true
                         state.Set { state.Current with ShowSidebar = not state.Current.ShowSidebar; ShowPalette = false }
                         true
+                    | action when action = DesktopCommands.ShellChat ->
+                        e.Handled <- true
+                        state.Set { state.Current with ShellMode = Chat; ShowPalette = false }
+                        refreshThreads ()
+                        true
+                    | action when action = DesktopCommands.ShellWork ->
+                        e.Handled <- true
+                        state.Set { state.Current with ShellMode = Work; ShowPalette = false }
+                        true
+                    | action when action = DesktopCommands.ShellCodex ->
+                        e.Handled <- true
+                        state.Set { state.Current with ShellMode = Codex; ShowPalette = false }
+                        refreshThreads ()
+                        true
                     | _ -> false
 
             let applyRuntimeLink (link: DeepLink) =
@@ -2653,6 +2676,34 @@ module MainView =
                                                 TextBlock.foreground Theme.muted
                                                 TextBlock.verticalAlignment VerticalAlignment.Center
                                             ]
+                                            Button.create [
+                                                Button.content "Chat"
+                                                Button.onClick (fun _ ->
+                                                    state.Set { state.Current with ShellMode = Chat }
+                                                    refreshThreads ())
+                                            ]
+                                            Button.create [
+                                                Button.content "Work"
+                                                Button.onClick (fun _ ->
+                                                    state.Set { state.Current with ShellMode = Work })
+                                            ]
+                                            Button.create [
+                                                Button.content "Codex"
+                                                Button.onClick (fun _ ->
+                                                    state.Set { state.Current with ShellMode = Codex }
+                                                    refreshThreads ())
+                                            ]
+                                            TextBlock.create [
+                                                TextBlock.text (
+                                                    match state.Current.ShellMode with
+                                                    | Chat -> "layout Chat (local)"
+                                                    | Work -> HonestStubs.WorkLayoutMessage()
+                                                    | Codex -> "layout Codex")
+                                                TextBlock.foreground Theme.muted
+                                                TextBlock.verticalAlignment VerticalAlignment.Center
+                                                TextBlock.fontSize 11.
+                                                TextBlock.textWrapping TextWrapping.Wrap
+                                            ]
                                             TextBlock.create [
                                                 TextBlock.text (
                                                     let baseStatus = if state.Current.Busy then "▸ working" else "▸ idle"
@@ -3073,6 +3124,37 @@ module MainView =
                         Grid.columnDefinitions (if state.Current.ShowSidebar then "260,*,220" else "0,*,220")
                         Grid.children [
                             Border.create [
+                                Grid.column 0
+                                Grid.columnSpan 3
+                                Border.zIndex 8
+                                Border.isVisible (state.Current.ShellMode = Work)
+                                Border.background Theme.panel
+                                Border.child (
+                                    StackPanel.create [
+                                        StackPanel.verticalAlignment VerticalAlignment.Center
+                                        StackPanel.horizontalAlignment HorizontalAlignment.Center
+                                        StackPanel.spacing 8.
+                                        StackPanel.margin 24.
+                                        StackPanel.children [
+                                            TextBlock.create [
+                                                TextBlock.text "Work"
+                                                TextBlock.fontWeight FontWeight.SemiBold
+                                                TextBlock.fontSize 18.
+                                                TextBlock.horizontalAlignment HorizontalAlignment.Center
+                                                TextBlock.foreground Theme.text
+                                            ]
+                                            TextBlock.create [
+                                                TextBlock.text (HonestStubs.WorkLayoutMessage())
+                                                TextBlock.textWrapping TextWrapping.Wrap
+                                                TextBlock.fontSize 13.
+                                                TextBlock.horizontalAlignment HorizontalAlignment.Center
+                                                TextBlock.foreground Theme.muted
+                                            ]
+                                        ]
+                                    ]
+                                )
+                            ]
+                            Border.create [
                                 Border.background Theme.panel
                                 Border.borderBrush Theme.border
                                 Border.borderThickness (Thickness(0, 0, 1, 0))
@@ -3255,13 +3337,19 @@ module MainView =
                                                     ]
                                                     TextBlock.create [
                                                         TextBlock.text (
-                                                            if String.IsNullOrWhiteSpace state.Current.SelectedProject then "all projects"
-                                                            else "project " + (state.Current.Projects |> List.tryFind (fun p -> p.Id = state.Current.SelectedProject) |> Option.map (fun p -> p.Name) |> Option.defaultValue state.Current.SelectedProject))
+                                                            match state.Current.ShellMode with
+                                                            | Chat -> "Chat — unassigned threads"
+                                                            | Work -> HonestStubs.WorkLayoutMessage()
+                                                            | Codex ->
+                                                                if String.IsNullOrWhiteSpace state.Current.SelectedProject then "all projects"
+                                                                else "project " + (state.Current.Projects |> List.tryFind (fun p -> p.Id = state.Current.SelectedProject) |> Option.map (fun p -> p.Name) |> Option.defaultValue state.Current.SelectedProject))
                                                         TextBlock.foreground Theme.muted
                                                         TextBlock.fontSize 11.
+                                                        TextBlock.textWrapping TextWrapping.Wrap
                                                     ]
                                                     StackPanel.create [
                                                         StackPanel.spacing 2.
+                                                        StackPanel.isVisible (state.Current.ShellMode = Codex)
                                                         StackPanel.children (
                                                             ({ Id = ""; Name = "All projects"; Root = "" } :: state.Current.Projects)
                                                             |> List.map (fun proj ->

@@ -823,6 +823,9 @@ public class HonestStubSettingsTests
             Assert.True(c.Status is "notConfigured" or "underDevelopment", c.Label));
         Assert.Contains("notConfigured", HonestStubs.CloudSlashMessage());
         Assert.Contains("overlay", HonestStubs.PetOverlayMessage(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("notConfigured", HonestStubs.WorkLayoutMessage());
+        Assert.Contains("交付物", HonestStubs.WorkLayoutMessage());
+        Assert.DoesNotContain("Enable", HonestStubs.WorkLayoutMessage(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
