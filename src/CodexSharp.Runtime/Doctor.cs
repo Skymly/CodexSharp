@@ -434,7 +434,7 @@ public static class DoctorProbe
         {
             "computerUse: " + HonestStubs.StatusOf("computer_use"),
             "browserUse: " + HonestStubs.StatusOf("browser_use"),
-            "realtime webrtc: notConfigured",
+            "realtime webrtc: " + HonestStubs.StatusOf("realtime"),
         };
         return new DoctorCheck("apps", "apps", DoctorStatus.Ok, "computer/browser use are notConfigured", details);
     }

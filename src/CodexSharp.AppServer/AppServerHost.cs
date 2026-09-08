@@ -2599,6 +2599,7 @@ public sealed class AppServerHost
                     collaborationMode = ConfigService.Peek("collaboration_mode"),
                     computerUse = HonestStubs.StatusOf("computer_use"),
                     browserUse = HonestStubs.StatusOf("browser_use"),
+                    realtimeVoice = HonestStubs.StatusOf("realtime"),
                     extraReadRoots = SandboxRoots.List(),
                     tuiRaw = ConfigService.Peek("tui_raw"),
                     tuiVim = ConfigService.Peek("tui_vim"),
@@ -3347,9 +3348,10 @@ public sealed class AppServerHost
                     Error(id, -32001, $"Thread not loaded: {threadId}");
                     break;
                 }
-                Notify("thread/realtime/error", new { threadId, message = "realtime WebRTC is not implemented" });
-                Notify("thread/realtime/closed", new { threadId, reason = "notImplemented" });
-                Error(id, -32002, "realtime WebRTC is not implemented");
+                var status = HonestStubs.StatusOf("realtime");
+                Notify("thread/realtime/error", new { threadId, message = "realtime Voice is " + status });
+                Notify("thread/realtime/closed", new { threadId, reason = status });
+                Error(id, -32002, "realtime Voice is " + status);
                 break;
             }
 
