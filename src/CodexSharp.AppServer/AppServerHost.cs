@@ -2094,7 +2094,7 @@ public sealed class AppServerHost
                 Result(id, new
                 {
                     requirements = (object?)null,
-                    allowBrowserAndComputerUse = false,
+                    allowBrowserAndComputerUse = !HonestStubs.ForbidsEnable("browser_use") && !HonestStubs.ForbidsEnable("computer_use"),
                     note = "No requirements.toml / MDM policy is configured.",
                 });
                 break;
