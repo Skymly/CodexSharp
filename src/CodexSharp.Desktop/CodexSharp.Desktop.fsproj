@@ -8,6 +8,7 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="PopoutWindow.fs" />
     <Compile Include="MainView.fs" />
     <Compile Include="Program.fs" />
     <AvaloniaResource Include="Assets\**" />
