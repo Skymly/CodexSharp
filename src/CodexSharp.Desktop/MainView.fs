@@ -757,6 +757,7 @@ module MainView =
                         holder.Value <- Some { current() with SandboxRootDraft = value }
                         dispatch (SetSandboxRoot value))
 
+            let startupLink = DesktopActivation.ConsumeStartup() |> Option.ofObj
             let composerVim = ctx.useState (ComposerVim(ComposerBuffer()))
 
             let wipeComposerBuffer () =
@@ -994,12 +995,32 @@ module MainView =
                                         state.Set { state.Current with SearchHits = hits })))
                         async {
                             do! session.InitializeAsync() |> Async.AwaitTask
-                            let! _ = session.StartThreadAsync() |> Async.AwaitTask
-                            Dispatcher.UIThread.Post(fun () ->
-                                state.Set
-                                    { state.Current with
-                                        Busy = false
-                                        Status = state.Current.Status })
+                            match startupLink with
+                            | Some link when link.Kind = DeepLinkKind.OpenThread && not (String.IsNullOrWhiteSpace link.ThreadId) ->
+                                do! session.ResumeThreadAsync link.ThreadId |> Async.AwaitTask
+                                let! items = session.ListItemsAsync() |> Async.AwaitTask
+                                Dispatcher.UIThread.Post(fun () ->
+                                    state.Set
+                                        { state.Current with
+                                            Timeline = itemsToTimeline items
+                                            Header = session.Title
+                                            Busy = false })
+                            | Some link when link.Kind = DeepLinkKind.NewThread ->
+                                let! _ = session.StartThreadAsync(cwd = link.WorkspacePath) |> Async.AwaitTask
+                                Dispatcher.UIThread.Post(fun () ->
+                                    state.Set { state.Current with Busy = false; Header = "New thread" })
+                            | Some link when link.Kind = DeepLinkKind.Settings ->
+                                let! _ = session.StartThreadAsync() |> Async.AwaitTask
+                                Dispatcher.UIThread.Post(fun () ->
+                                    state.Set { state.Current with Busy = false; ShowSettings = true })
+                            | Some link when link.Kind = DeepLinkKind.Skills ->
+                                let! _ = session.StartThreadAsync() |> Async.AwaitTask
+                                Dispatcher.UIThread.Post(fun () ->
+                                    state.Set { state.Current with Busy = false; Status = "Skills" })
+                            | _ ->
+                                let! _ = session.StartThreadAsync() |> Async.AwaitTask
+                                Dispatcher.UIThread.Post(fun () ->
+                                    state.Set { state.Current with Busy = false; Status = state.Current.Status })
                             refreshThreads ()
                             refreshChrome ()
                             async {
@@ -2091,6 +2112,41 @@ module MainView =
                         state.Set { state.Current with ShowSidebar = not state.Current.ShowSidebar; ShowPalette = false }
                         true
                     | _ -> false
+
+            let applyRuntimeLink (link: DeepLink) =
+                match link.Kind with
+                | DeepLinkKind.OpenThread when not (String.IsNullOrWhiteSpace link.ThreadId) ->
+                    resumeThread link.ThreadId
+                | DeepLinkKind.NewThread ->
+                    async {
+                        let! _ = session.StartThreadAsync(cwd = link.WorkspacePath, projectId = (if String.IsNullOrWhiteSpace state.Current.SelectedProject then null else state.Current.SelectedProject)) |> Async.AwaitTask
+                        Dispatcher.UIThread.Post(fun () ->
+                            state.Set
+                                { state.Current with
+                                    Timeline = []
+                                    Composer = ""
+                                    Header = "New thread"
+                                    Busy = false
+                                    ShowSettings = false
+                                    ShowPalette = false })
+                        refreshThreads ()
+                    }
+                    |> Async.Start
+                | DeepLinkKind.Settings ->
+                    state.Set { state.Current with ShowSettings = true; ShowPalette = false }
+                | DeepLinkKind.Skills ->
+                    state.Set { state.Current with Status = "Skills"; ShowPalette = false }
+                | _ ->
+                    ()
+
+            ctx.useEffect (
+                handler =
+                    (fun _ ->
+                        DesktopActivation.add_Received (
+                            Action<DeepLink>(fun link ->
+                                Dispatcher.UIThread.Post(fun () -> applyRuntimeLink link)))),
+                triggers = [ EffectTrigger.AfterInit ]
+            )
 
             let archiveThread () =
                 async {
