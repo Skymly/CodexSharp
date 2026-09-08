@@ -432,7 +432,7 @@ public static class DoctorProbe
     {
         var details = new List<string>
         {
-            "computerUse: notConfigured",
+            "computerUse: " + HonestStubs.StatusOf("computer_use"),
             "browserUse: " + HonestStubs.StatusOf("browser_use"),
             "realtime webrtc: notConfigured",
         };
