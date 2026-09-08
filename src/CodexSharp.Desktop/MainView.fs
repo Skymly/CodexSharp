@@ -66,6 +66,7 @@ type HookRow = { Name: string; Event: string }
 type FeatureRow = { Name: string; Enabled: bool; Stage: string }
 type CommentRow = { File: string; Span: string; Body: string }
 type PromptRow = { Name: string; Path: string }
+type ActivityRow = { Id: string; ThreadId: string; Title: string; Kind: string; At: string }
 type McpRow = { Name: string; Transport: string }
 
 type ScreenState =
@@ -146,7 +147,10 @@ type ScreenState =
       PaletteQuery: string
       PaletteIndex: int
       ShowSidebar: bool
-      ShowTerminal: bool }
+      ShowTerminal: bool
+      ShowActivity: bool
+      ActivityFilter: string
+      ActivityRows: ActivityRow list }
 
 module MainView =
 
@@ -333,6 +337,20 @@ module MainView =
         |> Seq.map (fun s -> { SectionRow.Id = s.Id; Name = s.Name })
         |> Seq.toList
 
+    let private toActivityRows () =
+        ActivityInbox.List()
+        |> Seq.map (fun i ->
+            { ActivityRow.Id = i.Id
+              ThreadId = i.ThreadId
+              Title = i.Title
+              Kind =
+                match i.Kind with
+                | ActivityKind.Running -> "running"
+                | ActivityKind.WaitingApproval -> "waiting"
+                | _ -> "unread"
+              At = i.At.ToLocalTime().ToString("HH:mm") })
+        |> Seq.toList
+
     let private applyEvent (state: IWritable<ScreenState>) (evt: AgentEvent) =
         let current = state.Current
         let upsert (item: TimelineItem) append =
@@ -413,7 +431,10 @@ module MainView =
             }
             |> Async.Start
         | AgentEvent.ApprovalNeeded (requestId, command, _, _) ->
-            state.Set { current with ApprovalId = requestId; ApprovalCommand = command }
+            if not (String.IsNullOrWhiteSpace current.Session.ThreadId) then
+                ActivityInbox.RecordWaitingApproval(current.Session.ThreadId, current.Header) |> ignore
+            OsNotify.TrySend("CodexSharp", "Waiting for approval") |> ignore
+            state.Set { current with ApprovalId = requestId; ApprovalCommand = command; ActivityRows = toActivityRows () }
         | AgentEvent.UserInputNeeded (requestId, questionsJson) ->
             state.Set { current with UserInputId = requestId; UserInputPrompt = questionsJson; UserInputDraft = "" }
         | AgentEvent.McpElicitationNeeded (requestId, message) ->
@@ -427,11 +448,16 @@ module MainView =
                         current.Timeline
                         @ [ { TimelineItem.Id = Ids.item (); Kind = "error"; ToolName = ""; Text = msg; Status = "failed"; ToolCallId = "" } ] }
         | AgentEvent.TurnStarted _ ->
-            state.Set { current with Busy = true }
+            if not (String.IsNullOrWhiteSpace current.Session.ThreadId) then
+                ActivityInbox.RecordRunning(current.Session.ThreadId, current.Header) |> ignore
+            state.Set { current with Busy = true; ActivityRows = toActivityRows () }
         | AgentEvent.TurnCompleted _ ->
+            if not (String.IsNullOrWhiteSpace current.Session.ThreadId) then
+                ActivityInbox.RecordCompleted(current.Session.ThreadId, current.Header) |> ignore
+            OsNotify.TrySend("CodexSharp", "Turn completed") |> ignore
             DesktopNotify.Send "CodexSharp turn completed"
             TurnNotify.Fire("agent-turn-complete", current.Session.ThreadId, null)
-            state.Set { current with Busy = false; Toast = "Turn completed" }
+            state.Set { current with Busy = false; Toast = "Turn completed"; ActivityRows = toActivityRows () }
         | AgentEvent.Compacted dropped ->
             state.Set { current with Status = sprintf "compacted %d messages" dropped }
         | AgentEvent.Warning msg ->
@@ -718,7 +744,10 @@ module MainView =
                           PaletteQuery = ""
                           PaletteIndex = 0
                           ShowSidebar = true
-                          ShowTerminal = true }
+                          ShowTerminal = true
+                          ShowActivity = false
+                          ActivityFilter = ""
+                          ActivityRows = [] }
                     let model =
                         { Screen = screen
                           ApiKey = ""
@@ -2605,6 +2634,14 @@ module MainView =
                                                 Button.content (if state.Current.ShowSettings then "Close settings" else "Settings")
                                                 Button.onClick (fun _ -> state.Set { state.Current with ShowSettings = not state.Current.ShowSettings })
                                             ]
+                                            Button.create [
+                                                Button.content (if state.Current.ShowActivity then "Close activity" else "Activity")
+                                                Button.onClick (fun _ ->
+                                                    state.Set
+                                                        { state.Current with
+                                                            ShowActivity = not state.Current.ShowActivity
+                                                            ActivityRows = toActivityRows () })
+                                            ]
                                             TextBlock.create [
                                                 TextBlock.text ("rc " + state.Current.RemoteControl)
                                                 TextBlock.foreground Theme.muted
@@ -2704,6 +2741,10 @@ module MainView =
                                                 Button.create [
                                                     Button.content "BEL"
                                                     Button.onClick (fun _ -> writeConfig "tui_notifications" "bel")
+                                                ]
+                                                Button.create [
+                                                    Button.content "Windows"
+                                                    Button.onClick (fun _ -> writeConfig "tui_notifications" "os")
                                                 ]
                                                 Button.create [
                                                     Button.content "Off"
@@ -2822,6 +2863,81 @@ module MainView =
                                             TextBlock.textWrapping TextWrapping.Wrap
                                             TextBlock.foreground Theme.muted
                                             TextBlock.fontSize 11.
+                                        ]
+                                    ]
+                                ]
+                            )
+                        ]
+                    else
+                        Border.create [
+                            Border.dock Dock.Top
+                            Border.height 0.
+                        ]
+                    if state.Current.ShowActivity then
+                        Border.create [
+                            Border.dock Dock.Top
+                            Border.background Theme.card
+                            Border.borderBrush Theme.border
+                            Border.borderThickness (Thickness(0, 0, 0, 1))
+                            Border.padding 12.
+                            Border.maxHeight 220.
+                            Border.child (
+                                StackPanel.create [
+                                    StackPanel.spacing 6.
+                                    StackPanel.children [
+                                        TextBlock.create [
+                                            TextBlock.text "Activity  ·  local only"
+                                            TextBlock.fontWeight FontWeight.SemiBold
+                                            TextBlock.foreground Theme.accent
+                                        ]
+                                        StackPanel.create [
+                                            StackPanel.orientation Orientation.Horizontal
+                                            StackPanel.spacing 4.
+                                            StackPanel.children [
+                                                Button.create [
+                                                    Button.content "All"
+                                                    Button.onClick (fun _ -> state.Set { state.Current with ActivityFilter = "" })
+                                                ]
+                                                Button.create [
+                                                    Button.content "Running"
+                                                    Button.onClick (fun _ -> state.Set { state.Current with ActivityFilter = "running" })
+                                                ]
+                                                Button.create [
+                                                    Button.content "Waiting"
+                                                    Button.onClick (fun _ -> state.Set { state.Current with ActivityFilter = "waiting" })
+                                                ]
+                                                Button.create [
+                                                    Button.content "Unread"
+                                                    Button.onClick (fun _ -> state.Set { state.Current with ActivityFilter = "unread" })
+                                                ]
+                                            ]
+                                        ]
+                                        StackPanel.create [
+                                            StackPanel.spacing 2.
+                                            StackPanel.children (
+                                                let rows =
+                                                    state.Current.ActivityRows
+                                                    |> List.filter (fun r ->
+                                                        state.Current.ActivityFilter = "" || r.Kind = state.Current.ActivityFilter)
+                                                if rows.IsEmpty then
+                                                    [ TextBlock.create [
+                                                        TextBlock.text "No local activity."
+                                                        TextBlock.foreground Theme.muted
+                                                      ] :> IView ]
+                                                else
+                                                    rows
+                                                    |> List.truncate 12
+                                                    |> List.map (fun row ->
+                                                        Button.create [
+                                                            Button.content (row.Kind + "  " + row.At + "  " + row.Title)
+                                                            Button.horizontalAlignment HorizontalAlignment.Stretch
+                                                            Button.horizontalContentAlignment HorizontalAlignment.Left
+                                                            Button.onClick (fun _ ->
+                                                                ActivityInbox.MarkThreadRead row.ThreadId
+                                                                resumeThread row.ThreadId
+                                                                state.Set { state.Current with ActivityRows = toActivityRows (); ShowActivity = true })
+                                                        ] :> IView)
+                                            )
                                         ]
                                     ]
                                 ]
