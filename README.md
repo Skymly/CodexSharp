@@ -74,6 +74,15 @@ Published defaults for NAV-05 / COMP-06. These are not rebindable yet. Ctrl+K op
 
 Palette actions: new thread, open settings, jump to an existing thread, focus composer.
 
+Deep links use `codexsharp://` (not `codex://`; CodexSharp does not steal the official protocol):
+
+- `codexsharp://threads/new`
+- `codexsharp://threads/<id>`
+- `codexsharp://settings`
+- `codexsharp://skills`
+
+Unknown paths open the existing main window and are ignored. Query `path` is accepted only when it is an existing local directory; it is never executed.
+
 ## Config
 
 First launch writes `%USERPROFILE%\.codexsharp\config.toml` (override with `CODEXSHARP_HOME`).
