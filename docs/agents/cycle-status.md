@@ -38,11 +38,30 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Do not: reopen #32/#33; extract MainView chrome; mint IThreadStore or shell/mode RPC; start C2 in the same hop as this retro; steal codex://; elevated sandbox.
 - Verification: feature PRs 35 and 36 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
 
+### C2 浮动窗 — accepted
+
+- Destination: Goal Named cycle C2 — NAV-04 (`docs/DESKTOP_REQUIREMENTS.md`)
+- Feature:
+  - Map: [[C2] Floating always-on-top window](https://github.com/Skymly/CodexSharp/issues/42)
+  - Spec: [[C2] Spec: floating always-on-top window](https://github.com/Skymly/CodexSharp/issues/44)
+  - S1 [[C2][NAV-04] Pop-out always-on-top window](https://github.com/Skymly/CodexSharp/issues/43) — [PR 45](https://github.com/Skymly/CodexSharp/pull/45)
+- Architecture:
+  - Map: [[C2] Architecture map](https://github.com/Skymly/CodexSharp/issues/46)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260908-215200.html`
+  - [Keep DesktopPopout adapter or fold into MainView](https://github.com/Skymly/CodexSharp/issues/47) — keep DesktopPopout + PopoutWindow; no IWindowHost; no ScreenState fold
+  - Spec: [Architecture spec: no C2 implement slices](https://github.com/Skymly/CodexSharp/issues/48) — S1–Sn empty; no ready-for-agent debt
+- Retro:
+  - Went well: second Avalonia Window.Topmost without new JSON-RPC; same thread id (not /side fork); DesktopPopout tests lock bind/topmost; empty architecture pool legal after NAV-04.
+  - Keep: DesktopPopout as host adapter; PopoutWindow as Avalonia adapter; /side stays fork; no Pets; no MainView chrome extract; fake IModelClient.
+  - Change later (not this cycle): compact pop-out still lacks a live timeline; unused Forked flag; dual send paths on AppServerSession.
+  - Do not: reopen #43; mint window/* RPC; fold pop-out into ScreenState; start C3 in the same hop as this retro; Electron; steal codex://.
+- Verification: PR 45 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
+
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-None. C1 is accepted. Next named destination is C2 (hop I = hop E chart). Do not pre-write docs/DESKTOP_C2.md.
+None. C1 and C2 are accepted. Next named destination is C3 (hop I = hop E chart). Do not pre-write docs/DESKTOP_C3.md.
 
 ## Next destinations (if K > 1)
 
