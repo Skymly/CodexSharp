@@ -32,6 +32,17 @@ public static class HonestStubs
     public static bool IsLockedFeature(string name) =>
         LockedFeatures.Contains(name, StringComparer.OrdinalIgnoreCase);
 
+    public static bool ForbidsEnable(string name) => IsLockedFeature(name);
+
+    public static bool IsTogglableFeature(string name) =>
+        !string.IsNullOrWhiteSpace(name) && !IsLockedFeature(name);
+
+    public static string StatusOf(string id)
+    {
+        var hit = Capabilities.FirstOrDefault(c => c.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+        return hit?.Status ?? "notConfigured";
+    }
+
     public static string CloudSlashMessage() =>
         "notConfigured  Codex Cloud is not available in CodexSharp. /cloud and /cloud-environment have no remote backend.";
 

@@ -2968,7 +2968,7 @@ module MainView =
                                             StackPanel.children (
                                                 let rows =
                                                     state.Current.FeatureRows
-                                                    |> List.filter (fun row -> not (HonestStubs.IsLockedFeature row.Name))
+                                                    |> List.filter (fun row -> HonestStubs.IsTogglableFeature row.Name)
                                                 if rows.IsEmpty then
                                                     [ TextBlock.create [
                                                         TextBlock.text "No togglable feature flags"
