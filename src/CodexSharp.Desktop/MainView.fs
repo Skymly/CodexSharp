@@ -820,6 +820,8 @@ module MainView =
 
             let startupLink = DesktopActivation.ConsumeStartup() |> Option.ofObj
             let composerVim = ctx.useState (ComposerVim(ComposerBuffer()))
+            let sshHostDraft = ctx.useState ""
+            let sshFolderDraft = ctx.useState ""
 
             let wipeComposerBuffer () =
                 composerVim.Current.Buffer.Clear()
@@ -3689,6 +3691,40 @@ module MainView =
                                                         TextBlock.foreground Theme.muted
                                                         TextBlock.fontSize 11.
                                                         TextBlock.textWrapping TextWrapping.Wrap
+                                                    ]
+                                                    TextBlock.create [
+                                                        TextBlock.text "SSH remote project"
+                                                        TextBlock.fontWeight FontWeight.SemiBold
+                                                        TextBlock.foreground Theme.accent
+                                                    ]
+                                                    TextBlock.create [
+                                                        TextBlock.text "Tunnel underDevelopment. Not paired."
+                                                        TextBlock.foreground Theme.muted
+                                                        TextBlock.fontSize 11.
+                                                        TextBlock.textWrapping TextWrapping.Wrap
+                                                    ]
+                                                    ComboBox.create [
+                                                        ComboBox.dataItems (SshConfig.ConcreteHostsFromFile() |> Seq.toList)
+                                                        ComboBox.selectedItem sshHostDraft.Current
+                                                        ComboBox.onSelectedItemChanged (fun item ->
+                                                            match item with
+                                                            | :? string as host when host.Trim().Length > 0 -> sshHostDraft.Set host
+                                                            | _ -> ())
+                                                    ]
+                                                    TextBox.create [
+                                                        TextBox.placeHolderText "Remote folder"
+                                                        TextBox.text sshFolderDraft.Current
+                                                        TextBox.onTextChanged sshFolderDraft.Set
+                                                    ]
+                                                    Button.create [
+                                                        Button.content "Save SSH remote project"
+                                                        Button.onClick (fun _ ->
+                                                            try
+                                                                let _ = SshRemoteProjects.Persist(sshHostDraft.Current, sshFolderDraft.Current)
+                                                                refreshThreads ()
+                                                                state.Set { state.Current with Status = "SSH remote project saved (tunnel underDevelopment)" }
+                                                            with ex ->
+                                                                state.Set { state.Current with Status = ex.Message })
                                                     ]
                                                     ComboBox.create [
                                                         ComboBox.dataItems state.Current.Models
