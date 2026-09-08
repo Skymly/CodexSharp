@@ -402,6 +402,9 @@ public sealed class AppServerSession
     public Task<JsonElement> RolloutPathAsync(string? threadId = null) =>
         _client.CallAsync(AppServerMethods.ThreadRolloutPath, new { threadId = threadId ?? ThreadId });
 
+    public Task<JsonElement> HandoffAsync(string? destination = null, string? hostId = null) =>
+        _client.CallAsync(AppServerMethods.ThreadHandoff, new { threadId = ThreadId, destination, hostId });
+
     public async Task<JsonElement> StartWorktreeAsync(string? cwd = null)
     {
         var result = await _client.CallAsync(AppServerMethods.ThreadWorktreeStart, new { cwd = cwd ?? Environment.CurrentDirectory });

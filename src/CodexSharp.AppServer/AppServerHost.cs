@@ -743,6 +743,48 @@ public sealed class AppServerHost
                 break;
             }
 
+            case "thread/handoff":
+            {
+                var threadId = Str(paramsEl, "threadId") ?? "";
+                var destination = Str(paramsEl, "destination");
+                var hostId = Str(paramsEl, "hostId");
+                if (ThreadHandoff.IsCloudOrRemote(destination, hostId))
+                {
+                    Result(id, new { cloudHandoff = "notConfigured", crossHost = "notConfigured" });
+                    break;
+                }
+
+                if (!_threads.TryGetValue(threadId, out var handoffSession))
+                {
+                    Error(id, -32001, $"Thread not loaded: {threadId}");
+                    break;
+                }
+
+                if (_turnCts.TryGetValue(threadId, out var handoffCts))
+                {
+                    handoffCts.Cancel();
+                }
+
+                try
+                {
+                    var moved = ThreadHandoff.Toggle(threadId, handoffSession.Config.Cwd);
+                    handoffSession.SetCwd(moved.Cwd);
+                    Result(id, new
+                    {
+                        mode = moved.Mode,
+                        cwd = moved.Cwd,
+                        branch = moved.Branch,
+                        cloudHandoff = moved.CloudHandoff,
+                        crossHost = moved.CrossHost,
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Error(id, -32602, ex.Message);
+                }
+                break;
+            }
+
             case "thread/worktree/start":
             {
                 var cwd = Str(paramsEl, "cwd") ?? Environment.CurrentDirectory;

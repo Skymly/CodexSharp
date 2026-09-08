@@ -3039,6 +3039,24 @@ module MainView =
                                                                     |> Async.Start)
                                                             ]
                                                             Button.create [ Button.content "Fork"; Button.onClick (fun _ -> forkThread ()) ]
+                                                            Button.create [
+                                                                Button.content "Hand off"
+                                                                Button.onClick (fun _ ->
+                                                                    async {
+                                                                        try
+                                                                            do! session.InterruptAsync() |> Async.AwaitTask |> Async.Ignore
+                                                                            let! result = session.HandoffAsync() |> Async.AwaitTask
+                                                                            let cwd = jsStr result "cwd"
+                                                                            let mode = jsStr result "mode"
+                                                                            Dispatcher.UIThread.Post(fun () ->
+                                                                                state.Set { state.Current with Status = "handoff " + mode + " " + cwd })
+                                                                            refreshChrome ()
+                                                                        with ex ->
+                                                                            Dispatcher.UIThread.Post(fun () ->
+                                                                                state.Set { state.Current with Status = ex.Message })
+                                                                    }
+                                                                    |> Async.Start)
+                                                            ]
                                                             Button.create [ Button.content "Compact"; Button.onClick (fun _ -> compactThread ()) ]
                                                             Button.create [ Button.content "Apply"; Button.onClick (fun _ -> applyLastPatch ()) ]
                                                             Button.create [ Button.content "Rollback"; Button.onClick (fun _ -> rollbackThread ()) ]

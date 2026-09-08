@@ -131,6 +131,7 @@ module AppServerMethods =
     let LastPatchApply = "lastPatch/apply"
     let GitWorktreeAdd = "git/worktree/add"
     let ThreadWorktreeStart = "thread/worktree/start"
+    let ThreadHandoff = "thread/handoff"
     let ThreadExport = "thread/export"
     let ThreadRolloutPath = "thread/rollout/path"
     let ThreadRecapStart = "thread/recap/start"
