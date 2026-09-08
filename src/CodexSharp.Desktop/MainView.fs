@@ -159,6 +159,8 @@ type ScreenState =
       ActivityFilter: string
       ActivityRows: ActivityRow list
       ReviewBaseDraft: string
+      ReviewCwd: string
+      ReviewRepoLabel: string
       PrNote: string
       PrComments: GhPrComment list
       ShowScheduled: bool
@@ -345,6 +347,11 @@ module MainView =
         items
         |> Seq.map (fun p -> { ProjectRow.Id = p.Id; Name = p.Name; Root = p.Root; ExtraRoots = p.ExtraRoots |> Seq.toList })
         |> Seq.toList
+
+    let private reviewRepos (projects: ProjectRow list) (selectedId: string) =
+        match projects |> List.tryFind (fun p -> p.Id = selectedId) with
+        | None -> []
+        | Some p -> DesktopReviewRepos.FromProject(p.Root, p.ExtraRoots) |> List.ofSeq
 
     let private toSectionRows (items: IReadOnlyList<SectionListItem>) =
         items
@@ -765,6 +772,8 @@ module MainView =
                           ActivityFilter = ""
                           ActivityRows = []
                           ReviewBaseDraft = "main"
+                          ReviewCwd = ""
+                          ReviewRepoLabel = ""
                           PrNote = ""
                           PrComments = []
                           ShowScheduled = false
@@ -2354,11 +2363,17 @@ module MainView =
             let refreshPrComments () =
                 async {
                     try
-                        let status = GhPrComments.Probe(Environment.CurrentDirectory)
+                        let primary =
+                            state.Current.Projects
+                            |> List.tryFind (fun p -> p.Id = state.Current.SelectedProject)
+                            |> Option.map (fun p -> p.Root)
+                            |> Option.defaultValue state.Current.ReviewCwd
+                        let cwd = if String.IsNullOrWhiteSpace primary then Environment.CurrentDirectory else primary
+                        let status = GhPrComments.Probe(cwd)
                         Dispatcher.UIThread.Post(fun () ->
                             state.Set
                                 { state.Current with
-                                    PrNote = status.Reason
+                                    PrNote = GhPrComments.HonestNote(status)
                                     PrComments = status.Comments |> List.ofSeq })
                     with ex ->
                         Dispatcher.UIThread.Post(fun () ->
@@ -3316,6 +3331,44 @@ module MainView =
                                                             Button.create [ Button.content "Compact"; Button.onClick (fun _ -> compactThread ()) ]
                                                             Button.create [ Button.content "Apply"; Button.onClick (fun _ -> applyLastPatch ()) ]
                                                             Button.create [ Button.content "Rollback"; Button.onClick (fun _ -> rollbackThread ()) ]
+                                                            TextBlock.create [
+                                                                TextBlock.text (
+                                                                    let repos = reviewRepos state.Current.Projects state.Current.SelectedProject
+                                                                    let cwd = if String.IsNullOrWhiteSpace state.Current.ReviewCwd then DesktopReviewRepos.DefaultCwd(repos) else state.Current.ReviewCwd
+                                                                    let label = if String.IsNullOrWhiteSpace state.Current.ReviewRepoLabel then DesktopReviewRepos.LabelFor(repos, cwd) else state.Current.ReviewRepoLabel
+                                                                    "repo: " + label)
+                                                                TextBlock.foreground Theme.muted
+                                                                TextBlock.fontSize 11.
+                                                            ]
+                                                            StackPanel.create [
+                                                                StackPanel.orientation Orientation.Horizontal
+                                                                StackPanel.spacing 4.
+                                                                StackPanel.children (
+                                                                    (reviewRepos state.Current.Projects state.Current.SelectedProject)
+                                                                    |> List.map (fun repo ->
+                                                                        Button.create [
+                                                                            Button.content (if repo.Primary then repo.Label + "*" else repo.Label)
+                                                                            Button.onClick (fun _ ->
+                                                                                state.Set
+                                                                                    { state.Current with
+                                                                                        ReviewCwd = repo.Cwd
+                                                                                        ReviewRepoLabel = repo.Label }
+                                                                                async {
+                                                                                    try
+                                                                                        let! git = session.GitDiffToRemoteAsync(repo.Cwd) |> Async.AwaitTask
+                                                                                        let diff =
+                                                                                            let wtd = jsStr git "workingTreeDiff"
+                                                                                            if wtd.Length > 0 then wtd else jsStr git "diff"
+                                                                                        Dispatcher.UIThread.Post(fun () ->
+                                                                                            state.Set { state.Current with Diff = diff; Status = "review " + repo.Label })
+                                                                                    with ex ->
+                                                                                        Dispatcher.UIThread.Post(fun () ->
+                                                                                            state.Set { state.Current with Status = ex.Message })
+                                                                                }
+                                                                                |> Async.Start)
+                                                                        ] :> IView)
+                                                                )
+                                                            ]
                                                             Button.create [ Button.content "Uncommitted"; Button.onClick (fun _ -> reviewThread "") ]
                                                             Button.create [
                                                                 Button.content "Export"
@@ -3426,7 +3479,13 @@ module MainView =
                                                                     Button.content proj.Name
                                                                     Button.horizontalAlignment HorizontalAlignment.Stretch
                                                                     Button.onClick (fun _ ->
-                                                                        state.Set { state.Current with SelectedProject = proj.Id }
+                                                                        let repos = reviewRepos state.Current.Projects proj.Id
+                                                                        let cwd = DesktopReviewRepos.DefaultCwd(repos)
+                                                                        state.Set
+                                                                            { state.Current with
+                                                                                SelectedProject = proj.Id
+                                                                                ReviewCwd = cwd
+                                                                                ReviewRepoLabel = DesktopReviewRepos.LabelFor(repos, cwd) }
                                                                         refreshThreads ())
                                                                 ] :> IView)
                                                         )

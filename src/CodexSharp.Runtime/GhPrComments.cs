@@ -17,6 +17,19 @@ public readonly record struct CommandResult(int ExitCode, string Stdout, string 
 /// Local gh PR comments (GIT-05). Never talks to ChatGPT GitHub cloud.
 public static class GhPrComments
 {
+    public static string HonestNote(GhPrStatus status)
+    {
+        if (status.GhInstalled && status.Authenticated)
+        {
+            return status.Reason ?? "";
+        }
+
+        var reason = string.IsNullOrWhiteSpace(status.Reason) ? "notConfigured" : status.Reason;
+        return reason.Contains("notConfigured", StringComparison.OrdinalIgnoreCase)
+            ? reason
+            : "notConfigured: " + reason;
+    }
+
     public static GhPrStatus Probe(string? cwd, Func<string, string, CommandResult?>? run = null)
     {
         CommandResult? Exec(string args)
