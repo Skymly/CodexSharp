@@ -423,15 +423,17 @@ public sealed class CodexSession
     private readonly List<HistoryMessage> _history = new();
     private CodexConfig _config;
     private ThreadInfo _thread;
+    private readonly IReadOnlyList<string> _extraReadRoots;
     private SubagentExecutor? _collab;
     private readonly CommandExecBroker _unified = new();
     private readonly ConcurrentQueue<string> _steerQueue = new();
     private int _inTurn;
 
-    public CodexSession(CodexConfig config, ThreadInfo thread)
+    public CodexSession(CodexConfig config, ThreadInfo thread, IReadOnlyList<string>? extraReadRoots = null)
     {
         _config = config;
         _thread = thread;
+        _extraReadRoots = extraReadRoots ?? [];
         _sink.Received += evt =>
         {
             _store.AppendEvent(thread.Id, evt);
@@ -458,6 +460,7 @@ public sealed class CodexSession
     public event Action<AgentEvent>? Event;
     public CodexConfig Config => _config;
     public ThreadInfo Thread => _thread;
+    public IReadOnlyList<string> ExtraReadRoots => _extraReadRoots;
     public InteractiveApprover Approver => _approver;
     public InteractiveUserInput UserInput => _userInput;
     public InteractiveUserInput McpElicitation => _mcpElicit;
@@ -482,7 +485,7 @@ public sealed class CodexSession
         public string TryDequeue() => queue.TryDequeue(out var text) ? text : "";
     }
 
-    public static CodexSession Start(CodexConfig? config = null, string? title = null, bool ephemeral = false)
+    public static CodexSession Start(CodexConfig? config = null, string? title = null, bool ephemeral = false, IReadOnlyList<string>? extraReadRoots = null)
     {
         config ??= ConfigService.Load();
         ThreadInfo thread;
@@ -497,7 +500,7 @@ public sealed class CodexSession
             thread = new JsonlThreadStore().Create(config, title);
         }
 
-        var session = new CodexSession(config, thread);
+        var session = new CodexSession(config, thread, extraReadRoots);
         session._sink.Emit(AgentEvent.NewThreadStarted(thread.Id, thread.Title, thread.Cwd));
         return session;
     }
@@ -507,7 +510,8 @@ public sealed class CodexSession
         config ??= ConfigService.Load();
         var store = new JsonlThreadStore();
         var thread = store.Find(threadId) ?? throw new InvalidOperationException($"Unknown thread {threadId}");
-        var session = new CodexSession(config, thread);
+        var extras = ProjectStore.ExtraRoots(ProjectStore.ProjectOf(threadId));
+        var session = new CodexSession(config, thread, extras);
         session.RestoreHistory(store.LoadHistory(threadId));
         session.RestoreGoal(store.LoadGoal(threadId));
         return session;
@@ -702,7 +706,7 @@ public sealed class CodexSession
     public async Task<string> RunTurnAsync(string userText, CancellationToken ct = default)
     {
         IModelClient model = new HttpModelClient(_config);
-        IToolExecutor inner = new BuiltinToolExecutor(_config, (id, chunk) => _sink.Emit(AgentEvent.NewCommandOutputDelta(id, chunk)), EstimateTokens, _unified);
+        IToolExecutor inner = new BuiltinToolExecutor(_config, (id, chunk) => _sink.Emit(AgentEvent.NewCommandOutputDelta(id, chunk)), EstimateTokens, _unified, _extraReadRoots);
         await using var hub = await McpHub.StartAsync(_config, inner, ct);
         hub.ElicitationHandler = async (el, innerCt) =>
         {
@@ -717,7 +721,7 @@ public sealed class CodexSession
         };
         _collab ??= new SubagentExecutor(hub, async (message, fork, childCt) =>
         {
-            var child = fork ? Fork() : Start(_config);
+            var child = fork ? Fork() : Start(_config, extraReadRoots: _extraReadRoots);
             return await child.RunTurnAsync(message, childCt);
         }, new ConfigHookHost(_config.Home, _config.Cwd));
         _collab.Inner = hub;
@@ -754,7 +758,7 @@ public sealed class CodexSession
         }
 
         IModelClient model = new HttpModelClient(_config);
-        IToolExecutor inner = new BuiltinToolExecutor(_config);
+        IToolExecutor inner = new BuiltinToolExecutor(_config, extraReadRoots: _extraReadRoots);
         await using var hub = await McpHub.StartAsync(_config, inner, ct);
         var snapshot = new List<HistoryMessage>(_history);
         var deps = new AgentDeps(_config, model, inner, _approver, new NullSink(), hub.ExtraTools, new ConfigHookHost(_config.Home, _config.Cwd), _userInput, new NoopSteerHost(), "", "");
@@ -784,7 +788,7 @@ public sealed class CodexSession
 
     public CodexSession Fork()
     {
-        var child = Start(_config, $"fork of {_thread.Title}");
+        var child = Start(_config, $"fork of {_thread.Title}", extraReadRoots: _extraReadRoots);
         foreach (var message in _history)
         {
             child._history.Add(message);
@@ -945,7 +949,7 @@ public sealed class CodexSession
 
     public Task<string> RunTurnWithAsync(IModelClient model, IToolExecutor? tools, IApprover? approver, string userText, CancellationToken ct = default)
     {
-        var deps = new AgentDeps(_config, model, tools ?? new BuiltinToolExecutor(_config, (id, chunk) => _sink.Emit(AgentEvent.NewCommandOutputDelta(id, chunk)), EstimateTokens, _unified), approver ?? _approver, _sink, [], new ConfigHookHost(_config.Home, _config.Cwd), _userInput, new QueueSteerHost(_steerQueue), Goal ?? "", GoalStatus);
+        var deps = new AgentDeps(_config, model, tools ?? new BuiltinToolExecutor(_config, (id, chunk) => _sink.Emit(AgentEvent.NewCommandOutputDelta(id, chunk)), EstimateTokens, _unified, _extraReadRoots), approver ?? _approver, _sink, [], new ConfigHookHost(_config.Home, _config.Cwd), _userInput, new QueueSteerHost(_steerQueue), Goal ?? "", GoalStatus);
         HookRunner.Run(_config.Home, "UserPromptSubmit", new { type = "UserPromptSubmit", threadId = _thread.Id, text = userText }, _config.Cwd);
         Interlocked.Increment(ref _inTurn);
         try

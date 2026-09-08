@@ -159,7 +159,8 @@ public sealed class AppServerHost
                 var approval = Str(paramsEl, "approvalPolicy");
                 var profile = Str(paramsEl, "profile");
                 var config = ConfigService.Load(cwd, model, sandbox, approval, profile, Flag(paramsEl, "ignoreUserConfig"), Flag(paramsEl, "strictConfig"));
-                var session = CodexSession.Start(config, Str(paramsEl, "title"), Flag(paramsEl, "ephemeral"));
+                var extras = ProjectStore.ExtraRoots(startProjectId);
+                var session = CodexSession.Start(config, Str(paramsEl, "title"), Flag(paramsEl, "ephemeral"), extras);
                 var source = Str(paramsEl, "source") ?? Str(paramsEl, "threadSource");
                 if (!string.IsNullOrWhiteSpace(source))
                 {
@@ -1075,7 +1076,7 @@ public sealed class AppServerHost
                     Error(id, -32001, $"Thread not loaded: {threadId}");
                     break;
                 }
-                var exec = new ShellExecutor(new WorkspaceSandbox(session.Config), session.Config);
+                var exec = new ShellExecutor(new WorkspaceSandbox(session.Config, session.ExtraReadRoots), session.Config);
                 var result = await exec.RunAsync(new ToolCallRequest(Ids.call (), "shell", JsonSerializer.Serialize(new { command })), ct);
                 Result(id, new { output = result.Output, isError = result.IsError });
                 break;
