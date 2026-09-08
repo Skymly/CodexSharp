@@ -27,6 +27,10 @@ public static class DesktopCommands
     public const string ToggleTerminal = "toggleTerminal";
     public const string ToggleSidebar = "toggleSidebar";
     public const string FocusComposer = "focusComposer";
+    public const string ShellChat = "shellChat";
+    public const string ShellWork = "shellWork";
+    public const string ShellCodex = "shellCodex";
+    public const string DefaultShellMode = "codex";
 
     public static readonly IReadOnlyList<(string Keys, string Action)> DefaultBindings =
     [
@@ -36,6 +40,9 @@ public static class DesktopCommands
         ("ctrl+,", OpenSettings),
         ("ctrl+`", ToggleTerminal),
         ("ctrl+b", ToggleSidebar),
+        ("alt+1", ShellChat),
+        ("alt+2", ShellWork),
+        ("alt+3", ShellCodex),
     ];
 
     public static string NormalizeChord(string? chord)
@@ -71,6 +78,18 @@ public static class DesktopCommands
                 case "oem102":
                 case "tilde":
                     key = "`";
+                    break;
+                case "d1":
+                case "numpad1":
+                    key = "1";
+                    break;
+                case "d2":
+                case "numpad2":
+                    key = "2";
+                    break;
+                case "d3":
+                case "numpad3":
+                    key = "3";
                     break;
                 default:
                     key = part;

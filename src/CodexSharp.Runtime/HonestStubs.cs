@@ -37,4 +37,7 @@ public static class HonestStubs
 
     public static string PetOverlayMessage() =>
         "notConfigured  CodexSharp has no pet overlay (VPM-03 WON'T). Use /pets for a local TUI ascii pet only.";
+
+    public static string WorkLayoutMessage() =>
+        "交付物 (local). Cloud Work is notConfigured — not connected.";
 }

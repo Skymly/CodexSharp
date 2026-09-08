@@ -583,6 +583,36 @@ public class ProjectProtocolTests
     }
 
     [Fact]
+    public async Task Unassigned_list_uses_null_project_filter()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            await using var hosted = InProcessAppServer.Start();
+            var session = new AppServerSession(hosted.Client);
+            await session.InitializeAsync();
+            var root = Path.GetTempPath();
+            var created = await session.CreateProjectAsync("Alpha", root);
+            var projectId = created.GetProperty("project").GetProperty("id").GetString();
+            Assert.False(string.IsNullOrWhiteSpace(projectId));
+            var assignedId = await session.StartThreadAsync(root, "in-project", projectId);
+            var freeId = await session.StartThreadAsync(root, "no-project");
+            var unassigned = await session.LoadThreadsAsync(projectId: null, filterProject: true);
+            Assert.Contains(unassigned, t => t.Id == freeId && string.IsNullOrEmpty(t.ProjectId));
+            Assert.DoesNotContain(unassigned, t => t.Id == assignedId);
+            var inProject = await session.LoadThreadsAsync(projectId: projectId, filterProject: true);
+            Assert.Contains(inProject, t => t.Id == assignedId);
+            Assert.DoesNotContain(inProject, t => t.Id == freeId);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+
+    [Fact]
     public void Explorer_info_points_at_existing_folder()
     {
         var dir = Path.GetTempPath();
