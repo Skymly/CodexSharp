@@ -2600,6 +2600,7 @@ public sealed class AppServerHost
                     computerUse = HonestStubs.StatusOf("computer_use"),
                     browserUse = HonestStubs.StatusOf("browser_use"),
                     realtimeVoice = HonestStubs.StatusOf("realtime"),
+                    codeModeHost = HonestStubs.StatusOf("code_mode_host"),
                     extraReadRoots = SandboxRoots.List(),
                     tuiRaw = ConfigService.Peek("tui_raw"),
                     tuiVim = ConfigService.Peek("tui_vim"),
