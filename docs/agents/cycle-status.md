@@ -77,16 +77,38 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Do not: reopen #51/#52; merge ProjectStore into SandboxRoots; auto-discover extra AGENTS.md; start C4 in the same hop as this retro; GIT-08; Electron; steal codex://.
 - Verification: PRs 54 and 55 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
 
+### C4 诚实 stub 加固 — accepted
+
+- Destination: Goal Named cycle C4 — BCU-01, BCU-06, VPM-01, EXT-08, SET-03 (`docs/DESKTOP_REQUIREMENTS.md`)
+- Feature:
+  - Map: [[C4] Honest stub lock](https://github.com/Skymly/CodexSharp/issues/60)
+  - Spec: [[C4] Spec: honest stub lock](https://github.com/Skymly/CodexSharp/issues/66)
+  - S1 [[C4][SET-03] Settings catalog without fake Enable](https://github.com/Skymly/CodexSharp/issues/61) — [PR 67](https://github.com/Skymly/CodexSharp/pull/67)
+  - S2 [[C4][BCU-01] browser_use stays notConfigured](https://github.com/Skymly/CodexSharp/issues/62) — [PR 68](https://github.com/Skymly/CodexSharp/pull/68)
+  - S3 [[C4][BCU-06] computer_use stays notConfigured](https://github.com/Skymly/CodexSharp/issues/63) — [PR 69](https://github.com/Skymly/CodexSharp/pull/69)
+  - S4 [[C4][VPM-01] realtime Voice stays notConfigured](https://github.com/Skymly/CodexSharp/issues/64) — [PR 70](https://github.com/Skymly/CodexSharp/pull/70)
+  - S5 [[C4][EXT-08] code_mode_host stays underDevelopment](https://github.com/Skymly/CodexSharp/issues/65) — [PR 71](https://github.com/Skymly/CodexSharp/pull/71)
+- Architecture:
+  - Map: [[C4] Architecture map](https://github.com/Skymly/CodexSharp/issues/72)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260908-234800.html`
+  - [Keep HonestStubs; Doctor consumes StatusOf](https://github.com/Skymly/CodexSharp/issues/73) — keep honesty module; FeatureFlags.IsLockedFeature lock seam; Desktop + existing JSON-RPC adapters; Doctor consumes StatusOf; no Settings chrome extract; no honestStubs/list RPC
+  - Spec: [Architecture spec: no C4 implement slices](https://github.com/Skymly/CodexSharp/issues/74) — S1–Sn empty; no ready-for-agent debt
+- Retro:
+  - Went well: five named IDs shipped as five vertical PRs (SET-03 first); Settings + JSON-RPC stay notConfigured or underDevelopment with tests locking no fake Enable; config/read computerUse/browserUse from HonestStubs; thread/realtime/start is notConfigured; no in-app browser, CU, Voice, or JS host; empty architecture pool legal after those IDs; Council replaced HITL.
+  - Keep: HonestStubs as the honesty module; FeatureFlags.IsLockedFeature as the lock seam; Desktop settings and existing JSON-RPC as adapters; Doctor consumes StatusOf; no Enable that sticks; no MainView chrome extract; fake IModelClient; workspace-write.
+  - Change later (not this cycle): MainView.fs is still wide; Settings catalog remains Desktop-local; image generation stays a later ART-03 concern, not a sixth C4 ID.
+  - Do not: reopen #61–#65; implement @Browser, Computer Use, GPT-Live, or a JS host; mint honestStubs/list RPC; extract Settings chrome; start C5 in the same hop as this retro; mark image generation enabled; mark REM-01 connected; Electron; steal codex://.
+- Verification: feature PRs 67–71 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty. Tests lock no fake Enable.
+
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-None. C1, C2, and C3 are accepted. Next named destination is C4 (hop I = hop E chart). Do not pre-write docs/DESKTOP_C4.md.
+None. C1, C2, C3, and C4 are accepted. Next named destination is C5 (hop I = hop E chart). Do not pre-write docs/DESKTOP_C5.md.
 
 ## Next destinations (if K > 1)
 
 Named cycles on the active Goal (do not substitute §5.1 rows):
 
-- C4 诚实 stub 加固 — BCU-01, BCU-06, VPM-01, EXT-08, SET-03
 - C5 本机远程入口 — REM-02, EXT-04
 - MX / §5.2 WON'T: out of scope
