@@ -71,4 +71,14 @@ public class DesktopCommandsTests
         Assert.Contains(DesktopCommands.DefaultBindings, b => b.Keys == "alt+2" && b.Action == DesktopCommands.ShellWork);
         Assert.Contains(DesktopCommands.DefaultBindings, b => b.Keys == "alt+3" && b.Action == DesktopCommands.ShellCodex);
     }
+
+    [Fact]
+    public void Quick_and_temporary_chat_chords()
+    {
+        Assert.Equal(DesktopCommands.QuickChat, DesktopCommands.Match("ctrl+alt+n"));
+        Assert.Equal(DesktopCommands.TemporaryChat, DesktopCommands.Match("ctrl+shift+n"));
+        Assert.Equal(DesktopCommands.NewThread, DesktopCommands.Match("ctrl+n"));
+        Assert.Contains(DesktopCommands.DefaultBindings, b => b.Keys == "ctrl+alt+n" && b.Action == DesktopCommands.QuickChat);
+        Assert.Contains(DesktopCommands.DefaultBindings, b => b.Keys == "ctrl+shift+n" && b.Action == DesktopCommands.TemporaryChat);
+    }
 }
