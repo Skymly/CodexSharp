@@ -150,7 +150,10 @@ type ScreenState =
       ShowTerminal: bool
       ShowActivity: bool
       ActivityFilter: string
-      ActivityRows: ActivityRow list }
+      ActivityRows: ActivityRow list
+      ReviewBaseDraft: string
+      PrNote: string
+      PrComments: GhPrComment list }
 
 module MainView =
 
@@ -747,7 +750,10 @@ module MainView =
                           ShowTerminal = true
                           ShowActivity = false
                           ActivityFilter = ""
-                          ActivityRows = [] }
+                          ActivityRows = []
+                          ReviewBaseDraft = "main"
+                          PrNote = ""
+                          PrComments = [] }
                     let model =
                         { Screen = screen
                           ApiKey = ""
@@ -2249,6 +2255,21 @@ module MainView =
                 }
                 |> Async.Start
 
+            let refreshPrComments () =
+                async {
+                    try
+                        let status = GhPrComments.Probe(Environment.CurrentDirectory)
+                        Dispatcher.UIThread.Post(fun () ->
+                            state.Set
+                                { state.Current with
+                                    PrNote = status.Reason
+                                    PrComments = status.Comments |> List.ofSeq })
+                    with ex ->
+                        Dispatcher.UIThread.Post(fun () ->
+                            state.Set { state.Current with PrNote = ex.Message; PrComments = [] })
+                }
+                |> Async.Start
+
             let applyQueue listed =
                 let items = parseQueue listed
                 Dispatcher.UIThread.Post(fun () ->
@@ -3021,7 +3042,7 @@ module MainView =
                                                             Button.create [ Button.content "Compact"; Button.onClick (fun _ -> compactThread ()) ]
                                                             Button.create [ Button.content "Apply"; Button.onClick (fun _ -> applyLastPatch ()) ]
                                                             Button.create [ Button.content "Rollback"; Button.onClick (fun _ -> rollbackThread ()) ]
-                                                            Button.create [ Button.content "Review"; Button.onClick (fun _ -> reviewThread "") ]
+                                                            Button.create [ Button.content "Uncommitted"; Button.onClick (fun _ -> reviewThread "") ]
                                                             Button.create [
                                                                 Button.content "Export"
                                                                 Button.onClick (fun _ ->
@@ -3037,7 +3058,18 @@ module MainView =
                                                                     }
                                                                     |> Async.Start)
                                                             ]
-                                                            Button.create [ Button.content "vs main"; Button.onClick (fun _ -> reviewThread "main") ]
+                                                            Button.create [
+                                                                Button.content "vs branch"
+                                                                Button.onClick (fun _ ->
+                                                                    let branch = if String.IsNullOrWhiteSpace state.Current.ReviewBaseDraft then "main" else state.Current.ReviewBaseDraft.Trim()
+                                                                    reviewThread branch)
+                                                            ]
+                                                            TextBox.create [
+                                                                TextBox.width 88.
+                                                                TextBox.text state.Current.ReviewBaseDraft
+                                                                TextBox.placeHolderText "base branch"
+                                                                TextBox.onTextChanged (fun v -> state.Set { state.Current with ReviewBaseDraft = v })
+                                                            ]
                                                             Button.create [
                                                                 Button.content "Feedback"
                                                                 Button.onClick (fun _ ->
@@ -4037,11 +4069,44 @@ module MainView =
                                                 StackPanel.spacing 0.
                                                 StackPanel.children (diffViews state.Current.Diff)
                                             ]
+                                            DockPanel.create [
+                                                DockPanel.margin (Thickness(0, 12, 0, 0))
+                                                DockPanel.children [
+                                                    Button.create [
+                                                        Button.dock Dock.Right
+                                                        Button.content "Load PR"
+                                                        Button.onClick (fun _ -> refreshPrComments ())
+                                                    ]
+                                                    TextBlock.create [
+                                                        TextBlock.text "Review comments"
+                                                        TextBlock.fontWeight FontWeight.SemiBold
+                                                        TextBlock.foreground Theme.accent
+                                                        TextBlock.verticalAlignment VerticalAlignment.Center
+                                                    ]
+                                                ]
+                                            ]
                                             TextBlock.create [
-                                                TextBlock.text "Review comments"
-                                                TextBlock.fontWeight FontWeight.SemiBold
-                                                TextBlock.foreground Theme.accent
-                                                TextBlock.margin (Thickness(0, 12, 0, 0))
+                                                TextBlock.text (if String.IsNullOrWhiteSpace state.Current.PrNote then "" else state.Current.PrNote)
+                                                TextBlock.isVisible (not (String.IsNullOrWhiteSpace state.Current.PrNote))
+                                                TextBlock.foreground Theme.muted
+                                                TextBlock.fontSize 11.
+                                                TextBlock.textWrapping TextWrapping.Wrap
+                                            ]
+                                            StackPanel.create [
+                                                StackPanel.spacing 2.
+                                                StackPanel.children (
+                                                    state.Current.PrComments
+                                                    |> List.truncate 8
+                                                    |> List.map (fun row ->
+                                                        TextBlock.create [
+                                                            TextBlock.text (
+                                                                row.Author + ": " + row.Body
+                                                                + (if String.IsNullOrWhiteSpace row.Path then "" else "  (" + row.Path + (if row.Line = "" then "" else ":" + row.Line) + ")"))
+                                                            TextBlock.foreground Theme.text
+                                                            TextBlock.fontSize 11.
+                                                            TextBlock.textWrapping TextWrapping.Wrap
+                                                        ] :> IView)
+                                                )
                                             ]
                                             StackPanel.create [
                                                 StackPanel.spacing 4.
@@ -4115,7 +4180,12 @@ module MainView =
                                                                 Button.onClick (fun _ ->
                                                                     let title = state.Current.PrTitle.Replace("\"", "'")
                                                                     let body = state.Current.PrBody.Replace("\"", "'")
-                                                                    state.Set { state.Current with Composer = "gh pr create --title \"" + title + "\" --body \"" + body + "\"" })
+                                                                    state.Set { state.Current with Composer = "gh pr create --title \"" + title + "\" --body \"" + body + "\"" ; Status = "inserts gh pr create; does not create a PR" })
+                                                            ] :> IView
+                                                            TextBlock.create [
+                                                                TextBlock.text "Inserts a command only. Does not create a PR."
+                                                                TextBlock.foreground Theme.muted
+                                                                TextBlock.fontSize 11.
                                                             ] :> IView
                                                         ]
                                                 )
