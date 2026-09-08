@@ -791,12 +791,18 @@ public sealed class AppServerHost
                 try
                 {
                     var tree = WorktreeSession.Create(cwd);
+                    var setup = LocalEnvSetup.Run(tree.SourceRoot, tree.Cwd);
                     var config = ConfigService.Load(tree.Cwd);
                     var session = CodexSession.Start(config, "worktree");
                     ThreadSources.Set(session.Thread.Id, "worktree");
                     WorktreeBindings.Bind(session.Thread.Id, tree);
                     Wire(session);
                     _threads[session.Thread.Id] = session;
+                    if (setup.Ran && !setup.Ok)
+                    {
+                        var log = "setup script failed: " + setup.ScriptPath + Environment.NewLine + setup.Log;
+                        new JsonlThreadStore().AppendEvent(session.Thread.Id, AgentEvent.NewWarning(log));
+                    }
                     Notify("thread/started", new { thread = ThreadDto(session) });
                     Result(id, new
                     {
@@ -806,6 +812,10 @@ public sealed class AppServerHost
                         sourceRoot = tree.SourceRoot,
                         branch = tree.Branch,
                         cloudWorktree = "notConfigured",
+                        setupOk = setup.Ok,
+                        setupRan = setup.Ran,
+                        setupPath = setup.ScriptPath,
+                        setupLog = setup.Log,
                     });
                 }
                 catch (Exception ex)

@@ -81,6 +81,22 @@ public static class WindowsSandbox
             return Read();
         }
     }
+
+    public static string Describe(WindowsSandboxSnapshot? snap = null)
+    {
+        snap ??= Read();
+        if (string.Equals(snap.Mode, "elevated", StringComparison.OrdinalIgnoreCase))
+        {
+            return "elevated windowsSandbox is notConfigured. CodexSharp does not ship an official Windows sandbox helper.";
+        }
+
+        if (snap.Status == "ready")
+        {
+            return "unelevated: Job Object kill-on-close + workspace-write path policy. This is not OS isolation.";
+        }
+
+        return "windowsSandbox notConfigured. unelevated only records Job Object kill-on-close + workspace-write path policy; elevated stays notConfigured. This is not an OS elevated sandbox.";
+    }
 }
 
 public sealed record WorldWritableReport(IReadOnlyList<string> SamplePaths, int ExtraCount, bool FailedScan);

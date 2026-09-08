@@ -617,11 +617,9 @@ public sealed class AppServerSession
         var sandboxStatus = sandboxReady.TryGetProperty("status", out var stEl) && stEl.ValueKind == JsonValueKind.String ? stEl.GetString() ?? "notConfigured" : "notConfigured";
         var job = sandboxReady.TryGetProperty("jobObject", out var jobEl) && jobEl.ValueKind == JsonValueKind.True;
         var sandboxNote = sandboxStatus == "ready"
-            ? "Windows sandbox ready (Job Object kill-on-close). Official sandbox service is not installed."
-            : job
-                ? "Job Object available. Run windowsSandbox/setupStart mode=unelevated to mark ready."
-                : "windowsSandbox status=notConfigured";
-        sandboxNote += " Path policy defaults to workspace-write and is not an OS elevated sandbox.";
+            ? "unelevated: Job Object kill-on-close + workspace-write path policy. This is not OS isolation."
+            : "windowsSandbox notConfigured. unelevated only records Job Object kill-on-close + workspace-write path policy; elevated stays notConfigured. This is not an OS elevated sandbox.";
+        _ = job;
         var needsAuth = auth == "no api key";
         var remoteStatus = "disabled";
         try

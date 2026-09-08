@@ -2774,6 +2774,12 @@ module MainView =
                                             ]
                                         ]
                                         TextBlock.create [
+                                            TextBlock.text (WindowsSandbox.Describe())
+                                            TextBlock.textWrapping TextWrapping.Wrap
+                                            TextBlock.foreground Theme.muted
+                                            TextBlock.fontSize 11.
+                                        ]
+                                        TextBlock.create [
                                             TextBlock.text "Unconfigured capabilities"
                                             TextBlock.fontWeight FontWeight.SemiBold
                                             TextBlock.foreground Theme.accent
@@ -3025,12 +3031,17 @@ module MainView =
                                                                         try
                                                                             let! result = session.StartWorktreeAsync(Environment.CurrentDirectory) |> Async.AwaitTask
                                                                             let cwd = jsStr result "cwd"
+                                                                            let setupLog = jsStr result "setupLog"
+                                                                            let setupOk = jsBool result "setupOk"
+                                                                            let status =
+                                                                                if setupLog <> "" && not setupOk then "setup failed: " + setupLog
+                                                                                else "worktree " + cwd
                                                                             Dispatcher.UIThread.Post(fun () ->
                                                                                 state.Set
                                                                                     { state.Current with
                                                                                         Timeline = []
                                                                                         Header = "Worktree"
-                                                                                        Status = "worktree " + cwd })
+                                                                                        Status = status })
                                                                             refreshChrome ()
                                                                         with ex ->
                                                                             Dispatcher.UIThread.Post(fun () ->
@@ -4049,7 +4060,13 @@ module MainView =
                                                                         Timeline = state.Current.Timeline |> List.map id })
                                                         }
                                                         |> Async.Start
-                                                    state.Current.Timeline |> List.map (itemCard state.Current.RemoteImages retry insertMention)
+                                                    state.Current.Timeline |> List.map (itemCard state.Current.RemoteImages retry (fun path ->
+                                                                        if SystemFilePreview.IsOffice path then
+                                                                            let preview = SystemFilePreview.TryOpen path
+                                                                            let note = preview.Path + (if preview.Opened then "" else "  " + (if preview.Error = null then "unavailable" else preview.Error))
+                                                                            state.Set { state.Current with Status = note }
+                                                                        else
+                                                                            insertMention path))
                                                 )
                                             ]
                                         )
