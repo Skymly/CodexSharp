@@ -100,15 +100,34 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Do not: reopen #61–#65; implement @Browser, Computer Use, GPT-Live, or a JS host; mint honestStubs/list RPC; extract Settings chrome; start C5 in the same hop as this retro; mark image generation enabled; mark REM-01 connected; Electron; steal codex://.
 - Verification: feature PRs 67–71 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty. Tests lock no fake Enable.
 
+### C5 本机远程入口 — accepted
+
+- Destination: Goal Named cycle C5 — REM-02, EXT-04 (`docs/DESKTOP_REQUIREMENTS.md`)
+- Feature:
+  - Map: [[C5] Local SSH remote entry](https://github.com/Skymly/CodexSharp/issues/76)
+  - Spec: [[C5] Spec: local SSH remote entry](https://github.com/Skymly/CodexSharp/issues/77)
+  - S1 [[C5][REM-02] SSH remote project entry](https://github.com/Skymly/CodexSharp/issues/78) — [PR 80](https://github.com/Skymly/CodexSharp/pull/80)
+  - S2 [[C5][EXT-04] MCP OAuth stays notConfigured](https://github.com/Skymly/CodexSharp/issues/79) — [PR 81](https://github.com/Skymly/CodexSharp/pull/81)
+- Architecture:
+  - Map: [[C5] Architecture map](https://github.com/Skymly/CodexSharp/issues/82)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260909-004900.html`
+  - [Keep SshConfig + SshRemoteProjects; RemoteControl status-only](https://github.com/Skymly/CodexSharp/issues/83) — keep parse + persist modules; ProjectStore generic metadata; no CreateSsh; RemoteControl stays REM-01 status-only; no Settings chrome extract; no unofficial ssh/* RPC
+  - Spec: [Architecture spec: no C5 implement slices](https://github.com/Skymly/CodexSharp/issues/84) — S1–Sn empty; no ready-for-agent debt
+- Retro:
+  - Went well: two named IDs shipped as two vertical PRs (REM-02 Host picker + persist, tunnel underDevelopment; EXT-04 oauth/login lock + bearer env); Settings copy never 已配对; remoteControl stays errored/disabled; empty architecture pool legal after those IDs; Council replaced HITL.
+  - Keep: SshConfig as parse module; SshRemoteProjects over generic ProjectStore metadata; HonestStubs ssh_remote distinct from remote; mcp_oauth notConfigured; HTTP MCP bearer_token_env_var; no MainView chrome extract; fake IModelClient; workspace-write.
+  - Change later (not this cycle): live SSH tunnel / remote app-server; MainView.fs is still wide; OAuth refusal still a host switch plus catalog row.
+  - Do not: reopen #78/#79; fold SSH into RemoteControl; implement official Remote relay or GIT-08; mark REM-01 connected; implement cloud OAuth; mint ssh/* RPC; start a sixth cycle in the same hop as this retro; Electron; steal codex://.
+- Verification: feature PRs 80 and 81 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
+
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-None. C1, C2, C3, and C4 are accepted. Next named destination is C5 (hop I = hop E chart). Do not pre-write docs/DESKTOP_C5.md.
+None. C1, C2, C3, C4, and C5 are accepted. Named cycles on this Goal are complete (K=5). Do not start C6. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
 Named cycles on the active Goal (do not substitute §5.1 rows):
 
-- C5 本机远程入口 — REM-02, EXT-04
 - MX / §5.2 WON'T: out of scope
