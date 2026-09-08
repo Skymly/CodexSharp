@@ -4115,7 +4115,12 @@ module MainView =
                                                                 Button.onClick (fun _ ->
                                                                     let title = state.Current.PrTitle.Replace("\"", "'")
                                                                     let body = state.Current.PrBody.Replace("\"", "'")
-                                                                    state.Set { state.Current with Composer = "gh pr create --title \"" + title + "\" --body \"" + body + "\"" })
+                                                                    state.Set { state.Current with Composer = "gh pr create --title \"" + title + "\" --body \"" + body + "\"" ; Status = "inserts gh pr create; does not create a PR" })
+                                                            ] :> IView
+                                                            TextBlock.create [
+                                                                TextBlock.text "Inserts a command only. Does not create a PR."
+                                                                TextBlock.foreground Theme.muted
+                                                                TextBlock.fontSize 11.
                                                             ] :> IView
                                                         ]
                                                 )
