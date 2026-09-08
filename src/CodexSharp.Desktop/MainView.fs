@@ -869,6 +869,32 @@ module MainView =
                 }
                 |> Async.Start
 
+            let popout = DesktopPopout()
+            let mutable popWin : Window option = None
+            let openPopout () =
+                let id = session.ThreadId
+                if String.IsNullOrWhiteSpace id then ()
+                else
+                    popout.Open(id)
+                    match popWin with
+                    | Some w ->
+                        w.Show()
+                        w.Activate()
+                    | None ->
+                        let w = PopoutWindow(id, state.Current.Header, fun text ->
+                            async {
+                                try
+                                    do! session.StartTurnOnThreadAsync(id, text) |> Async.AwaitTask |> Async.Ignore
+                                with ex ->
+                                    Dispatcher.UIThread.Post(fun () -> state.Set { state.Current with Status = ex.Message })
+                            }
+                            |> Async.Start)
+                        w.Closed.Add(fun _ ->
+                            popout.Close()
+                            popWin <- None)
+                        popWin <- Some w
+                        w.Show()
+
             let refreshChrome () =
                 async {
                     try
@@ -2210,6 +2236,10 @@ module MainView =
                         e.Handled <- true
                         startQuickChat true
                         true
+                    | action when action = DesktopCommands.PopOut ->
+                        e.Handled <- true
+                        openPopout ()
+                        true
                     | _ -> false
 
             let applyRuntimeLink (link: DeepLink) =
@@ -2725,6 +2755,10 @@ module MainView =
                                                 Button.onClick (fun _ ->
                                                     state.Set { state.Current with ShellMode = Codex }
                                                     refreshThreads ())
+                                            ]
+                                            Button.create [
+                                                Button.content "Pop out"
+                                                Button.onClick (fun _ -> openPopout ())
                                             ]
                                             TextBlock.create [
                                                 TextBlock.text (

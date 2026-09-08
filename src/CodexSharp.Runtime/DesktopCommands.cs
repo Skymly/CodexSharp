@@ -33,6 +33,7 @@ public static class DesktopCommands
     public const string DefaultShellMode = "codex";
     public const string QuickChat = "quickChat";
     public const string TemporaryChat = "temporaryChat";
+    public const string PopOut = "popOut";
 
     public static readonly IReadOnlyList<(string Keys, string Action)> DefaultBindings =
     [
@@ -47,6 +48,7 @@ public static class DesktopCommands
         ("alt+3", ShellCodex),
         ("ctrl+alt+n", QuickChat),
         ("ctrl+shift+n", TemporaryChat),
+        ("ctrl+alt+p", PopOut),
     ];
 
     public static string NormalizeChord(string? chord)

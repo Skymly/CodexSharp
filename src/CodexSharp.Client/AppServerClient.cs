@@ -972,6 +972,13 @@ public sealed class AppServerSession
         return _client.CallAsync(AppServerMethods.TurnStart, new { threadId = ThreadId, input }, ct);
     }
 
+    public Task StartTurnOnThreadAsync(string threadId, string text, CancellationToken ct = default)
+    {
+        var input = new List<object> { new { type = "text", text } };
+        var id = string.IsNullOrWhiteSpace(threadId) ? ThreadId : threadId;
+        return _client.CallAsync(AppServerMethods.TurnStart, new { threadId = id, input }, ct);
+    }
+
     /// Wait until the in-flight turn finishes. `turn/start` returns as soon as the RPC is accepted.
     public async Task RunTurnToCompletionAsync(string text, IEnumerable<string>? images = null, CancellationToken ct = default)
     {

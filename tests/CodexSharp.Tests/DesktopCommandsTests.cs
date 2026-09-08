@@ -81,4 +81,10 @@ public class DesktopCommandsTests
         Assert.Contains(DesktopCommands.DefaultBindings, b => b.Keys == "ctrl+alt+n" && b.Action == DesktopCommands.QuickChat);
         Assert.Contains(DesktopCommands.DefaultBindings, b => b.Keys == "ctrl+shift+n" && b.Action == DesktopCommands.TemporaryChat);
     }
+    [Fact]
+    public void Pop_out_chord_is_not_palette()
+    {
+        Assert.Equal(DesktopCommands.PopOut, DesktopCommands.Match("ctrl+alt+p"));
+        Assert.Equal(DesktopCommands.OpenPalette, DesktopCommands.Match("ctrl+shift+p"));
+    }
 }
