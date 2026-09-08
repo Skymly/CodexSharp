@@ -141,7 +141,12 @@ type ScreenState =
       TuiTitle: string
       GoalObjective: string
       GoalStatus: string
-      SkillHits: string list }
+      SkillHits: string list
+      ShowPalette: bool
+      PaletteQuery: string
+      PaletteIndex: int
+      ShowSidebar: bool
+      ShowTerminal: bool }
 
 module MainView =
 
@@ -708,7 +713,12 @@ module MainView =
                           TuiTitle = ""
                           GoalObjective = ""
                           GoalStatus = "cleared"
-                          SkillHits = [] }
+                          SkillHits = []
+                          ShowPalette = false
+                          PaletteQuery = ""
+                          PaletteIndex = 0
+                          ShowSidebar = true
+                          ShowTerminal = true }
                     let model =
                         { Screen = screen
                           ApiKey = ""
@@ -1976,6 +1986,112 @@ module MainView =
                 }
                 |> Async.Start
 
+            let listedPalette () =
+                let core = DesktopCommands.CoreItems() |> List.ofSeq
+                let threads =
+                    state.Current.Threads
+                    |> List.map (fun t -> DesktopCommands.ThreadItem(t.Id, t.Title))
+                DesktopCommands.Filter(core @ threads, state.Current.PaletteQuery)
+                |> List.ofSeq
+
+            let focusNamed (name: string) =
+                Dispatcher.UIThread.Post(fun () ->
+                    match Application.Current with
+                    | null -> ()
+                    | app ->
+                        match app.ApplicationLifetime with
+                        | :? IClassicDesktopStyleApplicationLifetime as desk when not (isNull desk.MainWindow) ->
+                            match desk.MainWindow.FindControl<TextBox>(name) with
+                            | null -> ()
+                            | tb -> tb.Focus() |> ignore
+                        | _ -> ())
+
+            let openPalette () =
+                state.Set { state.Current with ShowPalette = true; PaletteQuery = ""; PaletteIndex = 0 }
+                focusNamed "commandPaletteQuery"
+
+            let runPaletteItem (item: DesktopPaletteItem) =
+                let closed =
+                    { state.Current with
+                        ShowPalette = false
+                        PaletteQuery = ""
+                        PaletteIndex = 0 }
+                match item.Kind with
+                | DesktopPaletteKind.NewThread ->
+                    state.Set closed
+                    newThread ()
+                | DesktopPaletteKind.OpenSettings ->
+                    state.Set { closed with ShowSettings = true }
+                | DesktopPaletteKind.FocusComposer ->
+                    state.Set closed
+                    focusNamed "composer"
+                | DesktopPaletteKind.ToggleTerminal ->
+                    state.Set { closed with ShowTerminal = not closed.ShowTerminal }
+                | DesktopPaletteKind.ToggleSidebar ->
+                    state.Set { closed with ShowSidebar = not closed.ShowSidebar }
+                | DesktopPaletteKind.JumpThread ->
+                    state.Set closed
+                    if String.IsNullOrWhiteSpace item.ThreadId then () else resumeThread item.ThreadId
+                | _ ->
+                    state.Set closed
+
+            let runSelectedPalette () =
+                let items = listedPalette ()
+                if items.IsEmpty then
+                    ()
+                else
+                    let idx = min (max 0 state.Current.PaletteIndex) (items.Length - 1)
+                    runPaletteItem items.[idx]
+
+            let desktopChord (e: Avalonia.Input.KeyEventArgs) =
+                let parts = System.Collections.Generic.List<string>()
+                if e.KeyModifiers.HasFlag Avalonia.Input.KeyModifiers.Control then parts.Add "ctrl"
+                if e.KeyModifiers.HasFlag Avalonia.Input.KeyModifiers.Alt then parts.Add "alt"
+                if e.KeyModifiers.HasFlag Avalonia.Input.KeyModifiers.Shift then parts.Add "shift"
+                let keyName =
+                    match e.Key with
+                    | Avalonia.Input.Key.OemComma -> ","
+                    | Avalonia.Input.Key.OemTilde | Avalonia.Input.Key.Oem3 | Avalonia.Input.Key.Oem8 -> "`"
+                    | Avalonia.Input.Key.K -> "k"
+                    | Avalonia.Input.Key.N -> "n"
+                    | Avalonia.Input.Key.B -> "b"
+                    | Avalonia.Input.Key.P -> "p"
+                    | Avalonia.Input.Key.L -> "l"
+                    | _ -> e.Key.ToString().ToLowerInvariant()
+                String.Join("+", Array.append (parts.ToArray()) [| keyName |])
+
+            let handleDesktopChord (e: Avalonia.Input.KeyEventArgs) =
+                if e.Handled then
+                    false
+                else
+                    match DesktopCommands.Match(desktopChord e) with
+                    | null -> false
+                    | action when action = DesktopCommands.OpenPalette ->
+                        e.Handled <- true
+                        if state.Current.ShowPalette then
+                            state.Set { state.Current with ShowPalette = false; PaletteQuery = ""; PaletteIndex = 0 }
+                        else
+                            openPalette ()
+                        true
+                    | action when action = DesktopCommands.NewThread ->
+                        e.Handled <- true
+                        state.Set { state.Current with ShowPalette = false }
+                        newThread ()
+                        true
+                    | action when action = DesktopCommands.OpenSettings ->
+                        e.Handled <- true
+                        state.Set { state.Current with ShowPalette = false; ShowSettings = true }
+                        true
+                    | action when action = DesktopCommands.ToggleTerminal ->
+                        e.Handled <- true
+                        state.Set { state.Current with ShowTerminal = not state.Current.ShowTerminal; ShowPalette = false }
+                        true
+                    | action when action = DesktopCommands.ToggleSidebar ->
+                        e.Handled <- true
+                        state.Set { state.Current with ShowSidebar = not state.Current.ShowSidebar; ShowPalette = false }
+                        true
+                    | _ -> false
+
             let archiveThread () =
                 async {
                     do! session.ArchiveAsync() |> Async.AwaitTask |> Async.Ignore
@@ -2161,6 +2277,8 @@ module MainView =
 
             DockPanel.create [
                 DockPanel.background Theme.bg
+                InputElement.focusable true
+                InputElement.onKeyDown (fun e -> handleDesktopChord e |> ignore)
                 DockPanel.children [
                     Border.create [
                             Border.dock Dock.Top
@@ -2186,6 +2304,65 @@ module MainView =
                                 ]
                             )
                     ]
+                    if state.Current.ShowPalette then
+                        Border.create [
+                            Border.dock Dock.Top
+                            Border.background Theme.card
+                            Border.borderBrush Theme.accent
+                            Border.borderThickness (Thickness(0, 0, 0, 1))
+                            Border.padding 12.
+                            Border.child (
+                                StackPanel.create [
+                                    StackPanel.spacing 6.
+                                    StackPanel.children (
+                                        let items = listedPalette ()
+                                        let queryBox =
+                                            TextBox.create [
+                                                StyledElement.name "commandPaletteQuery"
+                                                TextBox.placeHolderText "Run a command…"
+                                                TextBox.text state.Current.PaletteQuery
+                                                TextBox.onTextChanged (fun t ->
+                                                    state.Set { state.Current with PaletteQuery = t; PaletteIndex = 0 })
+                                                TextBox.onKeyDown (fun e ->
+                                                    if handleDesktopChord e then
+                                                        ()
+                                                    elif e.Key = Avalonia.Input.Key.Escape then
+                                                        e.Handled <- true
+                                                        state.Set { state.Current with ShowPalette = false; PaletteQuery = ""; PaletteIndex = 0 }
+                                                    elif e.Key = Avalonia.Input.Key.Enter then
+                                                        e.Handled <- true
+                                                        runSelectedPalette ()
+                                                    elif e.Key = Avalonia.Input.Key.Down then
+                                                        e.Handled <- true
+                                                        let maxIdx = max 0 (listedPalette().Length - 1)
+                                                        state.Set { state.Current with PaletteIndex = min (state.Current.PaletteIndex + 1) maxIdx }
+                                                    elif e.Key = Avalonia.Input.Key.Up then
+                                                        e.Handled <- true
+                                                        state.Set { state.Current with PaletteIndex = max 0 (state.Current.PaletteIndex - 1) })
+                                            ] :> IView
+                                        let rows =
+                                            items
+                                            |> List.truncate 8
+                                            |> List.mapi (fun i item ->
+                                                Button.create [
+                                                    Button.content (
+                                                        let keys = if String.IsNullOrWhiteSpace item.Keys then "" else "  " + item.Keys
+                                                        item.Title + keys)
+                                                    Button.horizontalAlignment HorizontalAlignment.Stretch
+                                                    Button.horizontalContentAlignment HorizontalAlignment.Left
+                                                    Button.background (if i = state.Current.PaletteIndex then Theme.accent else Theme.bg)
+                                                    Button.foreground (if i = state.Current.PaletteIndex then SolidColorBrush(Color.Parse "#111827") else Theme.text)
+                                                    Button.onClick (fun _ -> runPaletteItem item)
+                                                ] :> IView)
+                                        queryBox :: rows)
+                                ]
+                            )
+                        ]
+                    else
+                        Border.create [
+                            Border.dock Dock.Top
+                            Border.height 0.
+                        ]
                     Border.create [
                             Border.dock Dock.Top
                             Border.isVisible (state.Current.ShowOnboarding || state.Current.ShowTrust)
@@ -2600,12 +2777,13 @@ module MainView =
                             Border.height 0.
                         ]
                     Grid.create [
-                        Grid.columnDefinitions "260,*,220"
+                        Grid.columnDefinitions (if state.Current.ShowSidebar then "260,*,220" else "0,*,220")
                         Grid.children [
                             Border.create [
                                 Border.background Theme.panel
                                 Border.borderBrush Theme.border
                                 Border.borderThickness (Thickness(0, 0, 1, 0))
+                                Border.isVisible state.Current.ShowSidebar
                                 Border.child (
                                     DockPanel.create [
                                         DockPanel.children [
@@ -3481,7 +3659,7 @@ module MainView =
                                                         )
                                                     ]
                                                     TextBlock.create [
-                                                        TextBlock.text (TuiKeymap.Hint() + "  ·  /help")
+                                                        TextBlock.text (TuiKeymap.Hint() + "  ·  ctrl+k commands  ·  /help")
                                                         TextBlock.foreground Theme.muted
                                                         TextBlock.fontSize 11.
                                                     ]
@@ -3489,6 +3667,7 @@ module MainView =
                                                         Grid.columnDefinitions "*,Auto,Auto,Auto"
                                                         Grid.children [
                                                             TextBox.create [
+                                                                StyledElement.name "composer"
                                                                 TextBox.text state.Current.Composer
                                                                 TextBox.placeHolderText "Ask CodexSharp to work in this repo…"
                                                                 TextBox.acceptsReturn true
@@ -3514,6 +3693,7 @@ module MainView =
                                                                     }
                                                                     |> Async.Start)
                                                                 TextBox.onKeyDown (fun e ->
+                                                                    if handleDesktopChord e then () else
                                                                     let chord =
                                                                         let parts = System.Collections.Generic.List<string>()
                                                                         if e.KeyModifiers.HasFlag Avalonia.Input.KeyModifiers.Control then parts.Add "ctrl"
@@ -3773,8 +3953,10 @@ module MainView =
                                                 TextBlock.fontWeight FontWeight.SemiBold
                                                 TextBlock.foreground Theme.accent
                                                 TextBlock.margin (Thickness(0, 12, 0, 0))
+                                                TextBlock.isVisible state.Current.ShowTerminal
                                             ]
                                             TextBlock.create [
+                                                TextBlock.isVisible state.Current.ShowTerminal
                                                 TextBlock.text (if String.IsNullOrWhiteSpace state.Current.Terminal then "command/exec stream. Type a command and Run." else state.Current.Terminal)
                                                 TextBlock.textWrapping TextWrapping.Wrap
                                                 TextBlock.foreground Theme.text
@@ -3783,6 +3965,7 @@ module MainView =
                                                 TextBlock.maxHeight 160.
                                             ]
                                             DockPanel.create [
+                                                DockPanel.isVisible state.Current.ShowTerminal
                                                 DockPanel.children [
                                                     Button.create [
                                                         Button.dock Dock.Right
@@ -3824,7 +4007,8 @@ module MainView =
                                                         TextBox.text state.Current.TermIn
                                                         TextBox.onTextChanged (fun v -> state.Set { state.Current with TermIn = v })
                                                         TextBox.onKeyDown (fun e ->
-                                                            if e.Key = Avalonia.Input.Key.Enter && state.Current.TermPid <> "" then
+                                                            if handleDesktopChord e then ()
+                                                            elif e.Key = Avalonia.Input.Key.Enter && state.Current.TermPid <> "" then
                                                                 e.Handled <- true
                                                                 let line = state.Current.TermIn + "\n"
                                                                 let pid = state.Current.TermPid

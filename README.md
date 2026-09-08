@@ -60,6 +60,20 @@ dotnet run --project src/CodexSharp.Cli -- app-server
 dotnet run --project src/CodexSharp.Desktop
 ```
 
+## Desktop shortcuts (Windows)
+
+Published defaults for NAV-05 / COMP-06. These are not rebindable yet. Ctrl+K opens the command palette; it does **not** clear the terminal (that would be Ctrl+L).
+
+| Keys | Action |
+|---|---|
+| Ctrl+K or Ctrl+Shift+P | Command palette |
+| Ctrl+N | New thread |
+| Ctrl+, | Settings |
+| Ctrl+` | Toggle terminal |
+| Ctrl+B | Toggle sidebar |
+
+Palette actions: new thread, open settings, jump to an existing thread, focus composer.
+
 ## Config
 
 First launch writes `%USERPROFILE%\.codexsharp\config.toml` (override with `CODEXSHARP_HOME`).
