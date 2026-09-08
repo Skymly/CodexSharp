@@ -57,18 +57,36 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Do not: reopen #43; mint window/* RPC; fold pop-out into ScreenState; start C3 in the same hop as this retro; Electron; steal codex://.
 - Verification: PR 45 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
 
+### C3 多根项目 — accepted
+
+- Destination: Goal Named cycle C3 — LIFE-02, GIT-06 (`docs/DESKTOP_REQUIREMENTS.md`)
+- Feature:
+  - Map: [[C3] Multi-root project](https://github.com/Skymly/CodexSharp/issues/50)
+  - Spec: [[C3] Spec: multi-root project](https://github.com/Skymly/CodexSharp/issues/53)
+  - S1 [[C3][LIFE-02] Extra project folders searchable](https://github.com/Skymly/CodexSharp/issues/51) — [PR 54](https://github.com/Skymly/CodexSharp/pull/54)
+  - S2 [[C3][GIT-06] Multi-repo review with primary default](https://github.com/Skymly/CodexSharp/issues/52) — [PR 55](https://github.com/Skymly/CodexSharp/pull/55)
+- Architecture:
+  - Map: [[C3] Architecture map](https://github.com/Skymly/CodexSharp/issues/56)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260908-225430.html`
+  - [Keep DesktopReviewRepos and three root modules](https://github.com/Skymly/CodexSharp/issues/57) — keep DesktopReviewRepos; GitProbe cwd-shaped; keep ProjectStore / SandboxRoots / SessionSandbox; thread-start extra-read compose; no ExtraRead type; no MainView chrome extract
+  - Spec: [Architecture spec: no C3 implement slices](https://github.com/Skymly/CodexSharp/issues/58) — S1–Sn empty; no ready-for-agent debt
+- Retro:
+  - Went well: extra folders on existing `ProjectStore.Roots` (primary first); session extra-read searchable without host-global SandboxRoots or `--add-dir` write; DesktopReviewRepos labeled switch over `gitDiffToRemote` cwd; missing gh is `notConfigured` + reason; empty architecture pool legal after LIFE-02 and GIT-06.
+  - Keep: three root modules; GitProbe cwd-shaped; AGENTS/skills/config on primary only; no `review/setRepo`; no MainView chrome extract; fake IModelClient; workspace-write.
+  - Change later (not this cycle): extra-read list still a constructor argument through session/tools; MainView.fs is still wide; extra-root writes remain P2; Last-turn All repos skipped.
+  - Do not: reopen #51/#52; merge ProjectStore into SandboxRoots; auto-discover extra AGENTS.md; start C4 in the same hop as this retro; GIT-08; Electron; steal codex://.
+- Verification: PRs 54 and 55 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
+
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-None. C1 and C2 are accepted. Next named destination is C3 (hop I = hop E chart). Do not pre-write docs/DESKTOP_C3.md.
+None. C1, C2, and C3 are accepted. Next named destination is C4 (hop I = hop E chart). Do not pre-write docs/DESKTOP_C4.md.
 
 ## Next destinations (if K > 1)
 
 Named cycles on the active Goal (do not substitute §5.1 rows):
 
-- C2 浮动窗 — NAV-04
-- C3 多根项目 — LIFE-02, GIT-06
 - C4 诚实 stub 加固 — BCU-01, BCU-06, VPM-01, EXT-08, SET-03
 - C5 本机远程入口 — REM-02, EXT-04
 - MX / §5.2 WON'T: out of scope
