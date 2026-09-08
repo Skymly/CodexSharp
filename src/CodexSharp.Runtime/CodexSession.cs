@@ -482,11 +482,21 @@ public sealed class CodexSession
         public string TryDequeue() => queue.TryDequeue(out var text) ? text : "";
     }
 
-    public static CodexSession Start(CodexConfig? config = null, string? title = null)
+    public static CodexSession Start(CodexConfig? config = null, string? title = null, bool ephemeral = false)
     {
         config ??= ConfigService.Load();
-        var store = new JsonlThreadStore();
-        var thread = store.Create(config, title);
+        ThreadInfo thread;
+        if (ephemeral)
+        {
+            var id = Ids.thread();
+            var now = DateTimeOffset.UtcNow;
+            thread = new ThreadInfo(id, title ?? "New thread", config.Cwd, config.Model, now, now, false, "");
+        }
+        else
+        {
+            thread = new JsonlThreadStore().Create(config, title);
+        }
+
         var session = new CodexSession(config, thread);
         session._sink.Emit(AgentEvent.NewThreadStarted(thread.Id, thread.Title, thread.Cwd));
         return session;

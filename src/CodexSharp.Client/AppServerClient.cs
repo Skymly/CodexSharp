@@ -203,7 +203,8 @@ public sealed class AppServerSession
         string? source = null,
         string? profile = null,
         bool ignoreUserConfig = false,
-        bool strictConfig = false)
+        bool strictConfig = false,
+        bool ephemeral = false)
     {
         var payload = new JsonObject
         {
@@ -218,6 +219,7 @@ public sealed class AppServerSession
         if (!string.IsNullOrWhiteSpace(profile)) payload["profile"] = profile;
         if (ignoreUserConfig) payload["ignoreUserConfig"] = true;
         if (strictConfig) payload["strictConfig"] = true;
+        if (ephemeral) payload["ephemeral"] = true;
         var result = await _client.CallAsync(AppServerMethods.ThreadStart, payload);
         ThreadId = result.GetProperty("thread").GetProperty("id").GetString() ?? "";
         Title = title ?? "New thread";

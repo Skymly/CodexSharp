@@ -613,6 +613,68 @@ public class ProjectProtocolTests
     }
 
     [Fact]
+    public async Task Ephemeral_thread_is_not_materialized_or_listed()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            await using var hosted = InProcessAppServer.Start();
+            var session = new AppServerSession(hosted.Client);
+            await session.InitializeAsync();
+            var started = await hosted.Client.CallAsync("thread/start", new { title = "temp", ephemeral = true });
+            var id = started.GetProperty("thread").GetProperty("id").GetString();
+            Assert.False(string.IsNullOrWhiteSpace(id));
+            Assert.True(started.GetProperty("thread").GetProperty("ephemeral").GetBoolean());
+            var sessionsDir = Path.Combine(home, "sessions");
+            if (Directory.Exists(sessionsDir))
+            {
+                Assert.DoesNotContain(Directory.GetFiles(sessionsDir, "*.jsonl"), p => Path.GetFileName(p).Contains(id!, StringComparison.Ordinal));
+            }
+            var listed = await session.LoadThreadsAsync();
+            Assert.DoesNotContain(listed, row => row.Id == id);
+            var unassigned = await session.LoadThreadsAsync(projectId: null, filterProject: true);
+            Assert.DoesNotContain(unassigned, row => row.Id == id);
+            var resume = await Assert.ThrowsAsync<InvalidOperationException>(() => session.ResumeThreadAsync(id!));
+            Assert.Contains("Unknown thread", resume.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+
+    [Fact]
+    public async Task Quick_chat_omits_project_and_stays_unassigned()
+    {
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            await using var hosted = InProcessAppServer.Start();
+            var session = new AppServerSession(hosted.Client);
+            await session.InitializeAsync();
+            var root = Path.GetTempPath();
+            var created = await session.CreateProjectAsync("Alpha", root);
+            var projectId = created.GetProperty("project").GetProperty("id").GetString();
+            var assignedId = await session.StartThreadAsync(root, "in-project", projectId);
+            var quickId = await session.StartThreadAsync(root, "quick");
+            var unassigned = await session.LoadThreadsAsync(projectId: null, filterProject: true);
+            Assert.Contains(unassigned, row => row.Id == quickId && string.IsNullOrEmpty(row.ProjectId));
+            Assert.DoesNotContain(unassigned, row => row.Id == assignedId);
+            var inProject = await session.LoadThreadsAsync(projectId: projectId, filterProject: true);
+            Assert.Contains(inProject, row => row.Id == assignedId);
+            Assert.DoesNotContain(inProject, row => row.Id == quickId);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+        }
+    }
+
+    [Fact]
     public void Explorer_info_points_at_existing_folder()
     {
         var dir = Path.GetTempPath();

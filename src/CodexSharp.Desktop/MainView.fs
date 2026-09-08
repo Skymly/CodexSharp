@@ -202,7 +202,7 @@ module MainView =
         el.ValueKind = JsonValueKind.Object && el.TryGetProperty(name, &v) && v.ValueKind = JsonValueKind.True
 
     let private slashCommands =
-        [ "/help"; "/new"; "/compact"; "/fork"; "/side"; "/btw"; "/archive"; "/rollback"; "/exec"; "/review"; "/queue"; "/name"; "/rename"; "/effort"; "/ide"; "/rollout"; "/plan"; "/default"; "/pair"; "/stop"; "/status"; "/skills"; "/hooks"; "/mcp"; "/diff"; "/worktree"; "/memory"; "/memories"; "/model"; "/sandbox"; "/sandbox-add-read-dir"; "/logout"; "/init"; "/apply"; "/export"; "/recap"; "/clear"; "/delete"; "/pwd"; "/cd"; "/plugins"; "/experimental"; "/prompts"; "/permissions"; "/approvals"; "/personality"; "/usage"; "/copy"; "/keymap"; "/pets"; "/pet"; "/cloud"; "/cloud-environment"; "/setup-default-sandbox"; "/doctor"; "/debug-config"; "/apps"; "/ps"; "/mention"; "/resume"; "/agents"; "/vim"; "/theme"; "/statusline"; "/title"; "/notifications"; "/pin"; "/search"; "/goal"; "/feedback"; "/approve"; "/import"; "/raw"; "/subagents"; "/execpolicy"; "/history" ]
+        [ "/help"; "/new"; "/task"; "/compact"; "/fork"; "/side"; "/btw"; "/archive"; "/rollback"; "/exec"; "/review"; "/queue"; "/name"; "/rename"; "/effort"; "/ide"; "/rollout"; "/plan"; "/default"; "/pair"; "/stop"; "/status"; "/skills"; "/hooks"; "/mcp"; "/diff"; "/worktree"; "/memory"; "/memories"; "/model"; "/sandbox"; "/sandbox-add-read-dir"; "/logout"; "/init"; "/apply"; "/export"; "/recap"; "/clear"; "/delete"; "/pwd"; "/cd"; "/plugins"; "/experimental"; "/prompts"; "/permissions"; "/approvals"; "/personality"; "/usage"; "/copy"; "/keymap"; "/pets"; "/pet"; "/cloud"; "/cloud-environment"; "/setup-default-sandbox"; "/doctor"; "/debug-config"; "/apps"; "/ps"; "/mention"; "/resume"; "/agents"; "/vim"; "/theme"; "/statusline"; "/title"; "/notifications"; "/pin"; "/search"; "/goal"; "/feedback"; "/approve"; "/import"; "/raw"; "/subagents"; "/execpolicy"; "/history" ]
 
     let private exportMarkdown (threadId: string) (timeline: TimelineItem list) =
         let md =
@@ -846,6 +846,29 @@ module MainView =
                 }
                 |> Async.Start
 
+            let startQuickChat (ephemeral: bool) =
+                async {
+                    let! _ = session.StartThreadAsync(ephemeral = ephemeral) |> Async.AwaitTask
+                    Dispatcher.UIThread.Post(fun () ->
+                        state.Set
+                            { state.Current with
+                                ShellMode = Chat
+                                Timeline = []
+                                Composer = ""
+                                Header = (if ephemeral then "Temporary chat" else "Quick chat")
+                                Busy = false
+                                ApprovalId = ""
+                                ApprovalCommand = ""
+                                Plan = ""
+                                SearchHits = []
+                                Diff = ""
+                                GoalObjective = ""
+                                GoalStatus = ThreadGoal.Cleared
+                                ShowPalette = false })
+                    refreshThreads ()
+                }
+                |> Async.Start
+
             let refreshChrome () =
                 async {
                     try
@@ -1181,6 +1204,8 @@ module MainView =
                             []
                     if text = "/help" then
                         addNote "agent_message" "/new /compact /fork /side /archive /rollback /exec CMD /review /queue /name TITLE /rename TITLE /effort low|medium|high /ide /rollout /plan /stop /resume ID /agents ID /status /skills /hooks /mcp /diff /worktree /memory /model NAME /sandbox MODE /logout /init /export /recap /clear /pwd /cd DIR /plugins /experimental /prompts /permissions /personality NAME /usage /copy /keymap /pets /pet /cloud /cloud-environment /setup-default-sandbox /vim /theme /statusline /pin /search TERM /goal [TEXT|pause|resume|clear] /feedback /approve /import /raw /subagents /execpolicy /history /help"
+                    elif text = "/task" then
+                        startQuickChat false
                     elif text = "/new" then
                         async {
                             let! _ = session.StartThreadAsync() |> Async.AwaitTask
@@ -2176,6 +2201,14 @@ module MainView =
                         e.Handled <- true
                         state.Set { state.Current with ShellMode = Codex; ShowPalette = false }
                         refreshThreads ()
+                        true
+                    | action when action = DesktopCommands.QuickChat ->
+                        e.Handled <- true
+                        startQuickChat false
+                        true
+                    | action when action = DesktopCommands.TemporaryChat ->
+                        e.Handled <- true
+                        startQuickChat true
                         true
                     | _ -> false
 

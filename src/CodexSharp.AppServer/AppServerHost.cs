@@ -159,7 +159,7 @@ public sealed class AppServerHost
                 var approval = Str(paramsEl, "approvalPolicy");
                 var profile = Str(paramsEl, "profile");
                 var config = ConfigService.Load(cwd, model, sandbox, approval, profile, Flag(paramsEl, "ignoreUserConfig"), Flag(paramsEl, "strictConfig"));
-                var session = CodexSession.Start(config, Str(paramsEl, "title"));
+                var session = CodexSession.Start(config, Str(paramsEl, "title"), Flag(paramsEl, "ephemeral"));
                 var source = Str(paramsEl, "source") ?? Str(paramsEl, "threadSource");
                 if (!string.IsNullOrWhiteSpace(source))
                 {
@@ -180,7 +180,16 @@ public sealed class AppServerHost
             case "thread/resume":
             {
                 var threadId = Str(paramsEl, "threadId") ?? "";
-                var session = CodexSession.Resume(threadId);
+                CodexSession session;
+                try
+                {
+                    session = CodexSession.Resume(threadId);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    Error(id, -32001, ex.Message);
+                    break;
+                }
                 Wire(session);
                 _threads[session.Thread.Id] = session;
                 Result(id, new { thread = ThreadDto(session) });
@@ -3706,6 +3715,7 @@ public sealed class AppServerHost
             ? new { path = wt.Root, cwd = wt.Cwd, sourceRoot = wt.SourceRoot, branch = wt.Branch, cloudWorktree = "notConfigured" }
             : null,
         cloudWorktree = "notConfigured",
+        ephemeral = string.IsNullOrEmpty(session.Thread.Path),
         subagents = session.ListSubagents().Select(a => new { id = a.Id, done = a.Done, result = a.Result }).ToArray(),
     };
 
