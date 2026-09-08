@@ -467,7 +467,7 @@ public class ThreadRealtimeStubTests
     }
 
     [Fact]
-    public async Task ListVoices_succeeds_but_start_is_not_implemented()
+    public async Task ListVoices_succeeds_but_start_is_notConfigured()
     {
         await using var hosted = InProcessAppServer.Start();
         var session = new AppServerSession(hosted.Client);
@@ -475,7 +475,7 @@ public class ThreadRealtimeStubTests
         var threadId = await session.StartThreadAsync(Path.GetTempPath(), "realtime");
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             hosted.Client.CallAsync("thread/realtime/start", new { threadId, outputModality = "text" }));
-        Assert.Contains("WebRTC", ex.Message);
+        Assert.Contains("notConfigured", ex.Message, StringComparison.OrdinalIgnoreCase);
         var voices = await hosted.Client.CallAsync("thread/realtime/listVoices");
         Assert.Equal(JsonValueKind.Array, voices.GetProperty("voices").ValueKind);
         await hosted.Client.CallAsync("thread/realtime/stop", new { threadId });
