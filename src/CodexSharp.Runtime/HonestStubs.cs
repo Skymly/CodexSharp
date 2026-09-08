@@ -13,6 +13,7 @@ public static class HonestStubs
         new("browser_use", "Browser Use", "notConfigured", "No in-app browser."),
         new("realtime", "Voice / realtime", "notConfigured", "No GPT-Live or WebRTC session."),
         new("remote", "Remote", "notConfigured", "No remote-control transport."),
+        new("ssh_remote", "SSH remote project", "underDevelopment", "SSH tunnel is underDevelopment. Not paired."),
         new("cloud", "Cloud thread / worktree", "notConfigured", "No Codex Cloud backend."),
         new("credits", "Credits", "notConfigured", "No ChatGPT usage credits."),
         new("code_mode_host", "code_mode_host", "underDevelopment", "No standalone JS code-mode host."),
