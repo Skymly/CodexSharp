@@ -60,7 +60,7 @@ type TimelineItem =
 type ThreadRow = { Id: string; Title: string; Subtitle: string; Pinned: bool; SectionId: string; ProjectId: string; Cwd: string }
 
 type SectionRow = { Id: string; Name: string }
-type ProjectRow = { Id: string; Name: string; Root: string }
+type ProjectRow = { Id: string; Name: string; Root: string; ExtraRoots: string list }
 
 type ShellMode =
     | Chat
@@ -114,6 +114,7 @@ type ScreenState =
       QueueItems: (string * string) list
       Projects: ProjectRow list
       ProjectDraft: string
+      ExtraFolderDraft: string
       SelectedProject: string
       FsNote: string
       UserInputId: string
@@ -342,7 +343,7 @@ module MainView =
 
     let private toProjectRows (items: IReadOnlyList<ProjectListItem>) =
         items
-        |> Seq.map (fun p -> { ProjectRow.Id = p.Id; Name = p.Name; Root = p.Root })
+        |> Seq.map (fun p -> { ProjectRow.Id = p.Id; Name = p.Name; Root = p.Root; ExtraRoots = p.ExtraRoots |> Seq.toList })
         |> Seq.toList
 
     let private toSectionRows (items: IReadOnlyList<SectionListItem>) =
@@ -719,6 +720,7 @@ module MainView =
                           QueueItems = []
                           Projects = []
                           ProjectDraft = ""
+                          ExtraFolderDraft = ""
                           SelectedProject = ""
                           FsNote = ""
                           UserInputId = ""
@@ -3418,7 +3420,7 @@ module MainView =
                                                         StackPanel.spacing 2.
                                                         StackPanel.isVisible (state.Current.ShellMode = Codex)
                                                         StackPanel.children (
-                                                            ({ Id = ""; Name = "All projects"; Root = "" } :: state.Current.Projects)
+                                                            ({ Id = ""; Name = "All projects"; Root = ""; ExtraRoots = [] } :: state.Current.Projects)
                                                             |> List.map (fun proj ->
                                                                 Button.create [
                                                                     Button.content proj.Name
@@ -3449,6 +3451,45 @@ module MainView =
                                                                 TextBox.placeHolderText "new project"
                                                                 TextBox.text state.Current.ProjectDraft
                                                                 TextBox.onTextChanged (fun v -> state.Set { state.Current with ProjectDraft = v })
+                                                            ]
+                                                        ]
+                                                    ]
+                                                    TextBlock.create [
+                                                        TextBlock.text (
+                                                            let pid = state.Current.SelectedProject
+                                                            let extras =
+                                                                state.Current.Projects
+                                                                |> List.tryFind (fun p -> p.Id = pid)
+                                                                |> Option.map (fun p -> p.ExtraRoots)
+                                                                |> Option.defaultValue []
+                                                            if extras.IsEmpty then "no extra folders"
+                                                            else "extra: " + String.concat "; " extras)
+                                                        TextBlock.foreground Theme.muted
+                                                        TextBlock.fontSize 11.
+                                                    ]
+                                                    DockPanel.create [
+                                                        DockPanel.children [
+                                                            Button.create [
+                                                                Button.dock Dock.Right
+                                                                Button.content "Add folder"
+                                                                Button.onClick (fun _ ->
+                                                                    let pid = state.Current.SelectedProject
+                                                                    let extra = state.Current.ExtraFolderDraft.Trim()
+                                                                    let proj = state.Current.Projects |> List.tryFind (fun p -> p.Id = pid)
+                                                                    if pid.Length > 0 && extra.Length > 0 && proj.IsSome then
+                                                                        let roots = proj.Value.Root :: proj.Value.ExtraRoots @ [ System.IO.Path.GetFullPath extra ]
+                                                                        async {
+                                                                            do! session.UpdateProjectAsync(pid, roots) |> Async.AwaitTask |> Async.Ignore
+                                                                            Dispatcher.UIThread.Post(fun () ->
+                                                                                state.Set { state.Current with ExtraFolderDraft = "" })
+                                                                            refreshThreads ()
+                                                                        }
+                                                                        |> Async.Start)
+                                                            ]
+                                                            TextBox.create [
+                                                                TextBox.placeHolderText "extra folder"
+                                                                TextBox.text state.Current.ExtraFolderDraft
+                                                                TextBox.onTextChanged (fun v -> state.Set { state.Current with ExtraFolderDraft = v })
                                                             ]
                                                         ]
                                                     ]

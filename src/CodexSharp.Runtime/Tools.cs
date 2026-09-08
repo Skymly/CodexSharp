@@ -208,12 +208,12 @@ public sealed class BuiltinToolExecutor : IToolExecutor
     private readonly Func<(long Total, long Last)>? _estimateTokens;
     private readonly CommandExecBroker _unified;
 
-    public BuiltinToolExecutor(CodexConfig config, Action<string, string>? onOutput = null, Func<(long Total, long Last)>? estimateTokens = null, CommandExecBroker? unified = null)
+    public BuiltinToolExecutor(CodexConfig config, Action<string, string>? onOutput = null, Func<(long Total, long Last)>? estimateTokens = null, CommandExecBroker? unified = null, IReadOnlyList<string>? extraReadRoots = null)
     {
         _config = config;
-        _sandbox = new WorkspaceSandbox(config);
-        _shell = new ShellExecutor(new WorkspaceSandbox(config), config, onOutput);
-        _files = new FileToolExecutor(new WorkspaceSandbox(config));
+        _sandbox = new WorkspaceSandbox(config, extraReadRoots);
+        _shell = new ShellExecutor(new WorkspaceSandbox(config, extraReadRoots), config, onOutput);
+        _files = new FileToolExecutor(new WorkspaceSandbox(config, extraReadRoots));
         _onOutput = onOutput;
         _estimateTokens = estimateTokens;
         _unified = unified ?? new CommandExecBroker();

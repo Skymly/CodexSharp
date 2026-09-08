@@ -157,7 +157,7 @@ public sealed class AppServerClient : IAsyncDisposable
 }
 
 public sealed record ThreadListItem(string Id, string Title, string Subtitle, bool Pinned, string SectionId, string ProjectId, string Cwd = "");
-public sealed record ProjectListItem(string Id, string Name, string Root);
+public sealed record ProjectListItem(string Id, string Name, string Root, IReadOnlyList<string> ExtraRoots);
 
 public sealed record SectionListItem(string Id, string Name);
 
@@ -796,15 +796,18 @@ public sealed class AppServerSession
             var id = Str(item, "id") ?? "";
             if (id.Length == 0) continue;
             var root = "";
+            var extra = new List<string>();
             if (item.TryGetProperty("roots", out var roots) && roots.ValueKind == JsonValueKind.Array)
             {
                 foreach (var r in roots.EnumerateArray())
                 {
-                    root = Str(r, "path") ?? "";
-                    if (root.Length > 0) break;
+                    var path = Str(r, "path") ?? "";
+                    if (path.Length == 0) continue;
+                    if (root.Length == 0) root = path;
+                    else extra.Add(path);
                 }
             }
-            rows.Add(new ProjectListItem(id, Str(item, "name") ?? id, root));
+            rows.Add(new ProjectListItem(id, Str(item, "name") ?? id, root, extra));
         }
 
         return rows;
@@ -819,6 +822,13 @@ public sealed class AppServerSession
             idempotencyKey = Guid.NewGuid().ToString("N"),
         });
     }
+
+    public Task<JsonElement> UpdateProjectAsync(string projectId, IEnumerable<string> roots) =>
+        _client.CallAsync(AppServerMethods.ProjectUpdate, new
+        {
+            projectId,
+            roots = roots.Select(path => new { path }).ToArray(),
+        });
 
     public Task DeleteProjectAsync(string projectId) =>
         _client.CallAsync(AppServerMethods.ProjectDelete, new { projectId });

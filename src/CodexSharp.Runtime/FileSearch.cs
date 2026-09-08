@@ -15,23 +15,25 @@ public static class FileSearch
         using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(call.ArgumentsJson) ? "{}" : call.ArgumentsJson);
         var query = doc.RootElement.TryGetProperty("query", out var q) ? q.GetString() ?? "" : "";
         var path = doc.RootElement.TryGetProperty("path", out var p) ? p.GetString() ?? "." : ".";
-        sandbox.EnsureReadable(path);
-        var root = sandbox.Resolve(path);
-        if (!Directory.Exists(root))
-        {
-            return new ToolCallResult(call.Id, call.Name, $"Directory not found: {path}", true);
-        }
-
         var hits = new List<string>();
-        foreach (var file in EnumerateFiles(root))
+        foreach (var root in SearchRoots(path, sandbox))
         {
-            var rel = Path.GetRelativePath(sandbox.Cwd, file).Replace('\\', '/');
-            if (rel.Contains(query, StringComparison.OrdinalIgnoreCase))
+            sandbox.EnsureReadable(root);
+            if (!Directory.Exists(root))
             {
-                hits.Add(rel);
-                if (hits.Count >= 50)
+                continue;
+            }
+
+            foreach (var file in EnumerateFiles(root))
+            {
+                var rel = Path.GetRelativePath(sandbox.Cwd, file).Replace('\\', '/');
+                if (rel.Contains(query, StringComparison.OrdinalIgnoreCase))
                 {
-                    break;
+                    hits.Add(rel);
+                    if (hits.Count >= 50)
+                    {
+                        return new ToolCallResult(call.Id, call.Name, string.Join('\n', hits), false);
+                    }
                 }
             }
         }
@@ -70,8 +72,6 @@ public static class FileSearch
         var path = doc.RootElement.TryGetProperty("path", out var p) ? p.GetString() ?? "." : ".";
         var glob = doc.RootElement.TryGetProperty("glob", out var g) ? g.GetString() : null;
         var max = doc.RootElement.TryGetProperty("max_matches", out var m) && m.TryGetInt32(out var mv) ? mv : 80;
-        sandbox.EnsureReadable(path);
-        var root = sandbox.Resolve(path);
         Regex regex;
         try
         {
@@ -84,6 +84,16 @@ public static class FileSearch
 
         var output = new StringBuilder();
         var count = 0;
+        var anyRoot = false;
+        foreach (var root in SearchRoots(path, sandbox))
+        {
+        sandbox.EnsureReadable(root);
+        if (!Directory.Exists(root))
+        {
+            continue;
+        }
+
+        anyRoot = true;
         foreach (var file in EnumerateFiles(root))
         {
             if (!string.IsNullOrEmpty(glob) && !MatchesGlob(Path.GetFileName(file), glob))
@@ -119,7 +129,49 @@ public static class FileSearch
             }
         }
 
+        }
+
+        if (!anyRoot)
+        {
+            return new ToolCallResult(call.Id, call.Name, $"Directory not found: {path}", true);
+        }
+
         return new ToolCallResult(call.Id, call.Name, count == 0 ? "(no matches)" : output.ToString(), false);
+    }
+
+    private static IEnumerable<string> SearchRoots(string path, WorkspaceSandbox sandbox)
+    {
+        var primary = sandbox.Resolve(path);
+        yield return primary;
+        if (!IsDefaultSearchPath(path, sandbox))
+        {
+            yield break;
+        }
+
+        foreach (var extra in sandbox.ExtraReadRoots)
+        {
+            if (!string.Equals(extra, primary, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return extra;
+            }
+        }
+    }
+
+    private static bool IsDefaultSearchPath(string path, WorkspaceSandbox sandbox)
+    {
+        if (string.IsNullOrWhiteSpace(path) || path == "." || path == "./")
+        {
+            return true;
+        }
+
+        try
+        {
+            return sandbox.Resolve(path).Equals(sandbox.Cwd, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static IEnumerable<string> EnumerateFiles(string root)

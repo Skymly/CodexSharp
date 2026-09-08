@@ -396,10 +396,13 @@ public static class ConfigService
     private static string TrimSlash(string url) => url.TrimEnd('/');
 }
 
-public sealed class WorkspaceSandbox(CodexConfig config)
+public sealed class WorkspaceSandbox(CodexConfig config, IEnumerable<string>? extraReadRoots = null)
 {
+    private readonly string[] extraRead = NormalizeExtraRead(extraReadRoots);
+
     public string Cwd { get; } = Path.GetFullPath(config.Cwd);
     public SandboxMode Mode { get; } = ParseSandbox(config.SandboxMode);
+    public IReadOnlyList<string> ExtraReadRoots => extraRead;
 
     public string Resolve(string path)
     {
@@ -419,7 +422,7 @@ public sealed class WorkspaceSandbox(CodexConfig config)
             return;
         }
 
-        if (!IsInside(full, Cwd) && !IsInside(full, config.Home) && !SandboxRoots.Allows(full) && !SessionSandbox.Allows(full))
+        if (!IsInside(full, Cwd) && !IsInside(full, config.Home) && !SandboxRoots.Allows(full) && !SessionSandbox.Allows(full) && !AllowsExtraRead(full))
         {
             throw new InvalidOperationException($"Sandbox denied read outside workspace: {full}");
         }
@@ -448,6 +451,32 @@ public sealed class WorkspaceSandbox(CodexConfig config)
             throw new InvalidOperationException($"Sandbox denied write to protected path: {full}");
         }
     }
+
+    private bool AllowsExtraRead(string full)
+    {
+        foreach (var root in extraRead)
+        {
+            if (IsInside(full, root))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string[] NormalizeExtraRead(IEnumerable<string>? extraReadRoots) =>
+        extraReadRoots is null
+            ? []
+            : extraReadRoots
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r =>
+                {
+                    try { return Path.GetFullPath(r.Trim()); }
+                    catch { return r.Trim(); }
+                })
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
 
     private bool IsProtected(string full)
     {
