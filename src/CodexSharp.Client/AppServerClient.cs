@@ -405,6 +405,21 @@ public sealed class AppServerSession
     public Task<JsonElement> HandoffAsync(string? destination = null, string? hostId = null) =>
         _client.CallAsync(AppServerMethods.ThreadHandoff, new { threadId = ThreadId, destination, hostId });
 
+    public Task<JsonElement> ScheduledListAsync() =>
+        _client.CallAsync(AppServerMethods.ScheduledList, new { });
+
+    public Task<JsonElement> ScheduledCreateAsync(string prompt, int everyMinutes, string? threadId = null) =>
+        _client.CallAsync(AppServerMethods.ScheduledCreate, new { prompt, everyMinutes, threadId });
+
+    public Task<JsonElement> ScheduledCancelAsync(string id) =>
+        _client.CallAsync(AppServerMethods.ScheduledCancel, new { id });
+
+    public Task<JsonElement> ScheduledTickAsync() =>
+        _client.CallAsync(AppServerMethods.ScheduledTick, new { });
+
+    public Task<JsonElement> ScheduledRunsAsync() =>
+        _client.CallAsync(AppServerMethods.ScheduledRuns, new { });
+
     public async Task<JsonElement> StartWorktreeAsync(string? cwd = null)
     {
         var result = await _client.CallAsync(AppServerMethods.ThreadWorktreeStart, new { cwd = cwd ?? Environment.CurrentDirectory });

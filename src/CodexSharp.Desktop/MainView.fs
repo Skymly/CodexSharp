@@ -153,7 +153,11 @@ type ScreenState =
       ActivityRows: ActivityRow list
       ReviewBaseDraft: string
       PrNote: string
-      PrComments: GhPrComment list }
+      PrComments: GhPrComment list
+      ShowScheduled: bool
+      SchedDraft: string
+      SchedMinutes: string
+      SchedNote: string }
 
 module MainView =
 
@@ -753,7 +757,11 @@ module MainView =
                           ActivityRows = []
                           ReviewBaseDraft = "main"
                           PrNote = ""
-                          PrComments = [] }
+                          PrComments = []
+                          ShowScheduled = false
+                          SchedDraft = ""
+                          SchedMinutes = "1"
+                          SchedNote = "" }
                     let model =
                         { Screen = screen
                           ApiKey = ""
@@ -2270,6 +2278,24 @@ module MainView =
                 }
                 |> Async.Start
 
+            ctx.useEffect (
+                handler =
+                    (fun _ ->
+                        let timer = DispatcherTimer()
+                        timer.Interval <- TimeSpan.FromSeconds 30.
+                        timer.Tick.Add(fun _ ->
+                            async {
+                                try
+                                    let! _ = session.ScheduledTickAsync() |> Async.AwaitTask
+                                    ()
+                                with _ ->
+                                    ()
+                            }
+                            |> Async.Start)
+                        timer.Start()),
+                triggers = [ EffectTrigger.AfterInit ]
+            )
+
             let applyQueue listed =
                 let items = parseQueue listed
                 Dispatcher.UIThread.Post(fun () ->
@@ -2663,6 +2689,10 @@ module MainView =
                                                             ShowActivity = not state.Current.ShowActivity
                                                             ActivityRows = toActivityRows () })
                                             ]
+                                            Button.create [
+                                                Button.content (if state.Current.ShowScheduled then "Close scheduled" else "Scheduled")
+                                                Button.onClick (fun _ -> state.Set { state.Current with ShowScheduled = not state.Current.ShowScheduled })
+                                            ]
                                             TextBlock.create [
                                                 TextBlock.text ("rc " + state.Current.RemoteControl)
                                                 TextBlock.foreground Theme.muted
@@ -2965,6 +2995,70 @@ module MainView =
                                                                 state.Set { state.Current with ActivityRows = toActivityRows (); ShowActivity = true })
                                                         ] :> IView)
                                             )
+                                        ]
+                                    ]
+                                ]
+                            )
+                        ]
+                    else
+                        Border.create [
+                            Border.dock Dock.Top
+                            Border.height 0.
+                        ]
+                    if state.Current.ShowScheduled then
+                        Border.create [
+                            Border.dock Dock.Top
+                            Border.background Theme.card
+                            Border.padding 12.
+                            Border.child (
+                                StackPanel.create [
+                                    StackPanel.spacing 6.
+                                    StackPanel.children [
+                                        TextBlock.create [
+                                            TextBlock.text "Scheduled  ·  app heartbeat"
+                                            TextBlock.fontWeight FontWeight.SemiBold
+                                            TextBlock.foreground Theme.accent
+                                        ]
+                                        TextBox.create [
+                                            TextBox.placeHolderText "prompt"
+                                            TextBox.text state.Current.SchedDraft
+                                            TextBox.onTextChanged (fun v -> state.Set { state.Current with SchedDraft = v })
+                                        ]
+                                        TextBox.create [
+                                            TextBox.placeHolderText "every N minutes"
+                                            TextBox.text state.Current.SchedMinutes
+                                            TextBox.onTextChanged (fun v -> state.Set { state.Current with SchedMinutes = v })
+                                        ]
+                                        StackPanel.create [
+                                            StackPanel.orientation Orientation.Horizontal
+                                            StackPanel.spacing 4.
+                                            StackPanel.children [
+                                                Button.create [
+                                                    Button.content "This thread"
+                                                    Button.onClick (fun _ ->
+                                                        let n = match Int32.TryParse(state.Current.SchedMinutes) with | true, v -> v | _ -> 1
+                                                        async {
+                                                            let! _ = session.ScheduledCreateAsync(state.Current.SchedDraft, n, session.ThreadId) |> Async.AwaitTask
+                                                            Dispatcher.UIThread.Post(fun () ->
+                                                                state.Set { state.Current with SchedNote = "created in-chat task" })
+                                                        } |> Async.Start)
+                                                ]
+                                                Button.create [
+                                                    Button.content "New thread each run"
+                                                    Button.onClick (fun _ ->
+                                                        let n = match Int32.TryParse(state.Current.SchedMinutes) with | true, v -> v | _ -> 1
+                                                        async {
+                                                            let! _ = session.ScheduledCreateAsync(state.Current.SchedDraft, n, null) |> Async.AwaitTask
+                                                            Dispatcher.UIThread.Post(fun () ->
+                                                                state.Set { state.Current with SchedNote = "created independent task" })
+                                                        } |> Async.Start)
+                                                ]
+                                            ]
+                                        ]
+                                        TextBlock.create [
+                                            TextBlock.text state.Current.SchedNote
+                                            TextBlock.foreground Theme.muted
+                                            TextBlock.fontSize 11.
                                         ]
                                     ]
                                 ]

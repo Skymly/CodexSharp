@@ -451,6 +451,60 @@ public sealed class AppServerHost
                 break;
             }
 
+            case "scheduled/list":
+            {
+                Result(id, new { data = ScheduledStore.List() });
+                break;
+            }
+
+            case "scheduled/create":
+            {
+                var prompt = Str(paramsEl, "prompt") ?? "";
+                var minutes = paramsEl.ValueKind == JsonValueKind.Object && paramsEl.TryGetProperty("everyMinutes", out var mEl) && mEl.TryGetInt32(out var mins) ? mins : 1;
+                var threadId = Str(paramsEl, "threadId");
+                var task = ScheduledStore.Create(prompt, minutes, threadId, DateTimeOffset.UtcNow);
+                Result(id, new { task });
+                break;
+            }
+
+            case "scheduled/cancel":
+            {
+                var sid = Str(paramsEl, "id") ?? "";
+                Result(id, new { cancelled = ScheduledStore.Cancel(sid) });
+                break;
+            }
+
+            case "scheduled/runs":
+            {
+                Result(id, new { data = ScheduledStore.Runs() });
+                break;
+            }
+
+            case "scheduled/tick":
+            {
+                var emitted = ScheduledStore.Tick(DateTimeOffset.UtcNow, true, task =>
+                {
+                    if (task.Kind == ScheduledKind.Independent || string.IsNullOrWhiteSpace(task.ThreadId))
+                    {
+                        var config = ConfigService.Load();
+                        var created = CodexSession.Start(config, "scheduled");
+                        Wire(created);
+                        _threads[created.Thread.Id] = created;
+                        _ = created.RunTurnAsync(task.Prompt, CancellationToken.None);
+                    }
+                    else if (_threads.TryGetValue(task.ThreadId, out var live))
+                    {
+                        _ = live.RunTurnAsync(task.Prompt, CancellationToken.None);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("thread not loaded");
+                    }
+                });
+                Result(id, new { data = emitted });
+                break;
+            }
+
             case "thread/increment_elicitation":
             {
                 if (!RequireExperimental(id, hasId, "thread/increment_elicitation")) break;
