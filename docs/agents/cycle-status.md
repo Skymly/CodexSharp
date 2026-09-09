@@ -139,11 +139,30 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Do not: reopen #89; implement Focused/Canvas or image edit; claim ChatGPT quota; mint image/* RPC; extract MainView chrome; start C7 in the same hop as this retro; Electron; steal codex://.
 - Verification: feature PR 90 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
 
+### C7 本地可视化 — accepted
+
+- Destination: Goal Named cycle C7 — ART-04 (`docs/DESKTOP_REQUIREMENTS.md`)
+- Feature:
+  - Map: [[C7] Local visualizations](https://github.com/Skymly/CodexSharp/issues/95)
+  - Spec: [[C7] Spec: local visualizations](https://github.com/Skymly/CodexSharp/issues/98)
+  - S1 [[C7][ART-04] Local visualizations](https://github.com/Skymly/CodexSharp/issues/97) — [PR 99](https://github.com/Skymly/CodexSharp/pull/99)
+- Architecture:
+  - Map: [[C7] Architecture map](https://github.com/Skymly/CodexSharp/issues/100)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260909-223041.html`
+  - [Keep SystemFilePreview; HonestStubs catalog; empty architecture pool](https://github.com/Skymly/CodexSharp/issues/101) — keep SystemFilePreview (HTML on same predicate); HonestStubs catalog + lock; no FeatureSpec; no chrome extract; empty architecture pool
+  - Spec: [Architecture spec: no C7 implement slices](https://github.com/Skymly/CodexSharp/issues/102) — S1–Sn empty; no ready-for-agent debt
+- Retro:
+  - Went well: one named ID shipped as one vertical PR (ART-04 notConfigured and OS-open workspace HTML); no official @Visualize preview; no host; empty architecture pool legal after that ID; Council replaced HITL; did not pre-write docs/DESKTOP_C7.md.
+  - Keep: SystemFilePreview as OS-open module; HonestStubs visualize catalog + lock seam; capabilities/read never true for visualize; MainView thin IsOffice/TryOpen caller; existing write + ART-03 PNG; fake IModelClient; workspace-write.
+  - Change later (not this cycle): rename IsOffice; MainView.fs is still wide; vendor TUI inline-vis.
+  - Do not: reopen #97; claim official @Visualize desktop preview or ChatGPT cloud viz; implement Sites hosting or Focused/Canvas; add VisualizeHost or FeatureSpec; mint visualize JSON-RPC; extract MainView chrome; start C8 in the same hop as this retro; Electron; steal codex://.
+- Verification: feature PR 99 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
+
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-C7 本地可视化 — charting. Destination: Goal Named cycle C7 — ART-04 (`docs/DESKTOP_REQUIREMENTS.md`). Map: [[C7] Local visualizations](https://github.com/Skymly/CodexSharp/issues/95). No child tickets; hop D mints S1 ART-04. Do not pre-write docs/DESKTOP_C7.md. Do not start C8. MX / section 5.2 WON'T remain out of scope.
+None. C7 is accepted. Named cycles on this Goal are complete (K=1). Do not start C8. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
