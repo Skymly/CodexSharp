@@ -143,7 +143,7 @@ M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder
 
 ## Current cycle
 
-None. C6 is accepted. Named cycles on this Goal are complete (K=1). Do not start C7. MX / section 5.2 WON'T remain out of scope.
+C7 本地可视化 — charting. Destination: Goal Named cycle C7 — ART-04 (`docs/DESKTOP_REQUIREMENTS.md`). Map: [[C7] Local visualizations](https://github.com/Skymly/CodexSharp/issues/95). No child tickets; hop D mints S1 ART-04. Do not pre-write docs/DESKTOP_C7.md. Do not start C8. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
