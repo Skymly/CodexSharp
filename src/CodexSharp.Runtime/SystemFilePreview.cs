@@ -5,10 +5,10 @@ namespace CodexSharp.Runtime;
 
 public sealed record PreviewResult(string Path, bool Opened, string? Error);
 
-/// Open Office/PDF with the OS default app (ART-01). Never uploads.
+/// Open Office/PDF/HTML with the OS default app (ART-01 / ART-04). Never uploads. Not a hosted preview.
 public static class SystemFilePreview
 {
-    public static readonly string[] Extensions = [".xlsx", ".xls", ".xlsm", ".pdf", ".docx", ".doc", ".pptx", ".ppt"];
+    public static readonly string[] Extensions = [".xlsx", ".xls", ".xlsm", ".pdf", ".docx", ".doc", ".pptx", ".ppt", ".html", ".htm"];
 
     public static bool IsOffice(string? path)
     {
@@ -29,7 +29,7 @@ public static class SystemFilePreview
         }
 
         var hits = new List<string>();
-        foreach (Match m in Regex.Matches(text, @"[A-Za-z]:\\[^\s""<>|*?]+\.(?:xlsx|xls|xlsm|pdf|docx|doc|pptx|ppt)|(?:\.{0,2}[\\/])?[^\s""<>|*?]+\.(?:xlsx|xls|xlsm|pdf|docx|doc|pptx|ppt)", RegexOptions.IgnoreCase))
+        foreach (Match m in Regex.Matches(text, @"[A-Za-z]:\\[^\s""<>|*?]+\.(?:xlsx|xls|xlsm|pdf|docx|doc|pptx|ppt|html|htm)|(?:\.{0,2}[\\/])?[^\s""<>|*?]+\.(?:xlsx|xls|xlsm|pdf|docx|doc|pptx|ppt|html|htm)", RegexOptions.IgnoreCase))
         {
             var value = m.Value.Trim().Trim('"', '\'', '.', ',', ';');
             if (IsOffice(value) && !hits.Contains(value, StringComparer.OrdinalIgnoreCase))

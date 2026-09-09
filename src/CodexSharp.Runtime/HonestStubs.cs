@@ -20,6 +20,7 @@ public static class HonestStubs
         new("code_mode_host", "code_mode_host", "underDevelopment", "No standalone JS code-mode host."),
         new("guardian", "Guardian", "underDevelopment", "No Guardian review."),
         new("windowsSandbox", "windowsSandbox", "notConfigured", "No elevated Windows sandbox."),
+        new("visualize", "Visualizations", "notConfigured", "Not an official visualization preview. Open workspace HTML with the OS. Not hosted."),
     ];
 
     public static readonly ReadOnlyCollection<string> LockedFeatures = new(
@@ -29,6 +30,7 @@ public static class HonestStubs
         "realtime",
         "guardian",
         "code_mode_host",
+        "visualize",
     ]);
 
     public static bool IsLockedFeature(string name) =>

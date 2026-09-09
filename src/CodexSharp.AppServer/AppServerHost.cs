@@ -2170,6 +2170,7 @@ public sealed class AppServerHost
                 Result(id, new
                 {
                     imageGeneration = ImageGeneration.IsConfigured(cfg),
+                    visualize = false,
                     namespaceTools = true,
                     webSearch = FeatureFlags.IsEnabled("web_search"),
                 });
