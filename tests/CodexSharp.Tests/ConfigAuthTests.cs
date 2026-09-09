@@ -793,13 +793,39 @@ public class ModelProviderCapabilitiesTests
     [Fact]
     public async Task Reads_capability_flags()
     {
-        await using var hosted = InProcessAppServer.Start();
-        var client = hosted.Client;
-        await client.CallAsync("initialize", new { clientInfo = new { name = "t", title = "t", version = "0" } });
-        var caps = await client.CallAsync("model/provider/capabilities/read");
-        Assert.True(caps.GetProperty("namespaceTools").GetBoolean());
-        Assert.False(caps.GetProperty("imageGeneration").GetBoolean());
-        Assert.True(caps.TryGetProperty("webSearch", out _));
+        var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        var previous = new Dictionary<string, string?>
+        {
+            ["CODEXSHARP_HOME"] = Environment.GetEnvironmentVariable("CODEXSHARP_HOME"),
+            ["OPENAI_API_KEY"] = Environment.GetEnvironmentVariable("OPENAI_API_KEY"),
+            ["CODEXSHARP_API_KEY"] = Environment.GetEnvironmentVariable("CODEXSHARP_API_KEY"),
+            ["CODEX_API_KEY"] = Environment.GetEnvironmentVariable("CODEX_API_KEY"),
+            ["MINIMAX"] = Environment.GetEnvironmentVariable("MINIMAX"),
+            ["MiniMax"] = Environment.GetEnvironmentVariable("MiniMax"),
+        };
+        try
+        {
+            Directory.CreateDirectory(home);
+            foreach (var key in previous.Keys)
+            {
+                Environment.SetEnvironmentVariable(key, key == "CODEXSHARP_HOME" ? home : null);
+            }
+
+            await using var hosted = InProcessAppServer.Start();
+            var client = hosted.Client;
+            await client.CallAsync("initialize", new { clientInfo = new { name = "t", title = "t", version = "0" } });
+            var caps = await client.CallAsync("model/provider/capabilities/read");
+            Assert.True(caps.GetProperty("namespaceTools").GetBoolean());
+            Assert.False(caps.GetProperty("imageGeneration").GetBoolean());
+            Assert.True(caps.TryGetProperty("webSearch", out _));
+        }
+        finally
+        {
+            foreach (var (key, value) in previous)
+            {
+                Environment.SetEnvironmentVariable(key, value);
+            }
+        }
     }
 }
 
