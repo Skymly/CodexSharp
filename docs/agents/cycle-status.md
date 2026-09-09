@@ -124,7 +124,7 @@ M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder
 
 ## Current cycle
 
-None. C1, C2, C3, C4, and C5 are accepted. Named cycles on this Goal are complete (K=5). Do not start C6. MX / section 5.2 WON'T remain out of scope.
+C6 本地图像生成 — charting. Destination: Goal Named cycle C6 — ART-03 (`docs/DESKTOP_REQUIREMENTS.md`). Map: [[C6] Local image generation](https://github.com/Skymly/CodexSharp/issues/86). No child tickets; hop D mints S1 ART-03. Do not pre-write docs/DESKTOP_C6.md. Do not start C7. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
