@@ -120,11 +120,30 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Do not: reopen #78/#79; fold SSH into RemoteControl; implement official Remote relay or GIT-08; mark REM-01 connected; implement cloud OAuth; mint ssh/* RPC; start a sixth cycle in the same hop as this retro; Electron; steal codex://.
 - Verification: feature PRs 80 and 81 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
 
+### C6 本地图像生成 — accepted
+
+- Destination: Goal Named cycle C6 — ART-03 (`docs/DESKTOP_REQUIREMENTS.md`)
+- Feature:
+  - Map: [[C6] Local image generation](https://github.com/Skymly/CodexSharp/issues/86)
+  - Spec: [[C6] Spec: local image generation](https://github.com/Skymly/CodexSharp/issues/88)
+  - S1 [[C6][ART-03] Local image generation](https://github.com/Skymly/CodexSharp/issues/89) — [PR 90](https://github.com/Skymly/CodexSharp/pull/90)
+- Architecture:
+  - Map: [[C6] Architecture map](https://github.com/Skymly/CodexSharp/issues/91)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260909-201422.html`
+  - [Keep IImagesClient; save in tool; empty architecture pool](https://github.com/Skymly/CodexSharp/issues/92) — keep IImagesClient (HTTP + fake); tool writes workspace PNG; ART-02 preview; no chrome extract; empty architecture pool
+  - Spec: [Architecture spec: no C6 implement slices](https://github.com/Skymly/CodexSharp/issues/93) — S1–Sn empty; no ready-for-agent debt
+- Retro:
+  - Went well: one named ID shipped as one vertical PR (ART-03 notConfigured-without-key and generate-when-configured); public Images API + user key; workspace PNG; no ChatGPT credits; empty architecture pool legal after that ID; Council replaced HITL; did not pre-write docs/DESKTOP_C6.md.
+  - Keep: IImagesClient beside IModelClient; HttpImagesClient + fake adapters; image_gen in F# protocol / C# tool executor; workspace-write save; ART-02 path preview; capabilities/read follows key; fake IModelClient.
+  - Change later (not this cycle): image edit; Focused/Canvas; MainView.fs is still wide.
+  - Do not: reopen #89; implement Focused/Canvas or image edit; claim ChatGPT quota; mint image/* RPC; extract MainView chrome; start C7 in the same hop as this retro; Electron; steal codex://.
+- Verification: feature PR 90 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
+
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-C6 本地图像生成 — charting. Destination: Goal Named cycle C6 — ART-03 (`docs/DESKTOP_REQUIREMENTS.md`). Map: [[C6] Local image generation](https://github.com/Skymly/CodexSharp/issues/86). No child tickets; hop D mints S1 ART-03. Do not pre-write docs/DESKTOP_C6.md. Do not start C7. MX / section 5.2 WON'T remain out of scope.
+None. C6 is accepted. Named cycles on this Goal are complete (K=1). Do not start C7. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
