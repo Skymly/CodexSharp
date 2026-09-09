@@ -207,8 +207,9 @@ public sealed class BuiltinToolExecutor : IToolExecutor
     private readonly Action<string, string>? _onOutput;
     private readonly Func<(long Total, long Last)>? _estimateTokens;
     private readonly CommandExecBroker _unified;
+    private readonly IImagesClient? _images;
 
-    public BuiltinToolExecutor(CodexConfig config, Action<string, string>? onOutput = null, Func<(long Total, long Last)>? estimateTokens = null, CommandExecBroker? unified = null, IReadOnlyList<string>? extraReadRoots = null)
+    public BuiltinToolExecutor(CodexConfig config, Action<string, string>? onOutput = null, Func<(long Total, long Last)>? estimateTokens = null, CommandExecBroker? unified = null, IReadOnlyList<string>? extraReadRoots = null, IImagesClient? images = null)
     {
         _config = config;
         _sandbox = new WorkspaceSandbox(config, extraReadRoots);
@@ -217,6 +218,7 @@ public sealed class BuiltinToolExecutor : IToolExecutor
         _onOutput = onOutput;
         _estimateTokens = estimateTokens;
         _unified = unified ?? new CommandExecBroker();
+        _images = images;
     }
 
     public Task<ToolCallResult> ExecuteAsync(ToolCallRequest call, CancellationToken ct)
@@ -233,6 +235,7 @@ public sealed class BuiltinToolExecutor : IToolExecutor
                 "load_skill" => Task.FromResult(SkillCatalog.LoadSkill(call, _config.Home, _config.Cwd)),
                 "request_user_input" => Task.FromResult(new ToolCallResult(call.Id, call.Name, "{\"answers\":{},\"note\":\"no UI attached\"}", false)),
                 "view_image" => Task.FromResult(ViewImage(call)),
+                "image_gen" => ImageGenAsync(call, ct),
                 "current_time" => Task.FromResult(new ToolCallResult(call.Id, call.Name, DateTimeOffset.Now.ToString("O") + " local\n" + DateTimeOffset.UtcNow.ToString("O") + " utc", false)),
                 "sleep" => SleepAsync(call, ct),
                 "web_search" => WebSearchAsync(call, ct),
@@ -307,6 +310,56 @@ public sealed class BuiltinToolExecutor : IToolExecutor
         }
 
         return new ToolCallResult(call.Id, call.Name, $"slept {ms}ms", false);
+    }
+
+    private async Task<ToolCallResult> ImageGenAsync(ToolCallRequest call, CancellationToken ct)
+    {
+        if (InPlanMode)
+        {
+            return DenyPlan(call);
+        }
+
+        if (!ImageGeneration.IsConfigured(_config))
+        {
+            return new ToolCallResult(call.Id, call.Name, ImageGeneration.NotConfiguredMessage, true);
+        }
+
+        using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(call.ArgumentsJson) ? "{}" : call.ArgumentsJson);
+        var prompt = doc.RootElement.TryGetProperty("prompt", out var p) ? p.GetString() ?? "" : "";
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            return new ToolCallResult(call.Id, call.Name, "prompt is required", true);
+        }
+
+        var client = _images ?? new HttpImagesClient(_config);
+        GeneratedImage image;
+        try
+        {
+            image = await client.GenerateAsync(prompt.Trim(), ct);
+        }
+        catch (Exception ex)
+        {
+            return new ToolCallResult(call.Id, call.Name, ex.Message, true);
+        }
+
+        if (image.PngBytes is null || image.PngBytes.Length == 0)
+        {
+            return new ToolCallResult(call.Id, call.Name, "Images API returned an empty image", true);
+        }
+
+        var relative = Path.Combine("generated_images", SanitizeFileToken(call.Id) + ".png");
+        _sandbox.EnsureWritable(relative);
+        var full = _sandbox.Resolve(relative);
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        File.WriteAllBytes(full, image.PngBytes);
+        return new ToolCallResult(call.Id, call.Name, "path=" + full + "\nbytes=" + image.PngBytes.Length + "\ntype=.png", false);
+    }
+
+    private static string SanitizeFileToken(string value)
+    {
+        var chars = value.Select(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_' ? ch : '-').ToArray();
+        var token = new string(chars).Trim('-');
+        return string.IsNullOrWhiteSpace(token) ? "image" : token;
     }
 
     private ToolCallResult ViewImage(ToolCallRequest call)

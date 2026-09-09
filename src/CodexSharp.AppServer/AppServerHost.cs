@@ -2166,9 +2166,10 @@ public sealed class AppServerHost
             case "model/provider/capabilities/read":
             case "modelProvider/capabilities/read":
             {
+                var cfg = ConfigService.Load();
                 Result(id, new
                 {
-                    imageGeneration = false,
+                    imageGeneration = ImageGeneration.IsConfigured(cfg),
                     namespaceTools = true,
                     webSearch = FeatureFlags.IsEnabled("web_search"),
                 });

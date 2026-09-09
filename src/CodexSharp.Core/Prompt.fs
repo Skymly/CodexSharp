@@ -78,6 +78,11 @@ module BuiltinTools =
           Description = "Inspect a local image file and return path, size, and type so you can reason about screenshots or mockups."
           ParametersJson = """{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}""" }
 
+    let imageGen =
+        { Name = "image_gen"
+          Description = "Generate an image from a text prompt via the public Images API using the user's API key, then save the PNG into the workspace. Unconfigured without a key. This is not ChatGPT quota or Focused/Canvas."
+          ParametersJson = """{"type":"object","properties":{"prompt":{"type":"string"}},"required":["prompt"]}""" }
+
     let requestUserInput =
         { Name = "request_user_input"
           Description = "Ask the user 1-3 short questions and wait for answers before continuing."
@@ -183,7 +188,7 @@ module BuiltinTools =
           Description = "List MCP resource templates. Without a live MCP session this returns configured servers only."
           ParametersJson = """{"type":"object","properties":{"server":{"type":"string"}}}""" }
 
-    let all = [| shell; readFile; writeFile; applyPatch; updatePlan; listDir; grepFiles; fileSearch; viewImage; currentTime; sleep; webSearch; loadSkill; requestUserInput; spawnAgent; waitAgent; sendInput; closeAgent; listAgents; resumeAgent; interruptAgent; getContextRemaining; toolSearch; listAvailablePlugins; requestPluginInstall; listMcpResources; readMcpResource; listMcpResourceTemplates; waitForEnvironment; sendMessageToUser; execCommand; writeStdin; requestPermissions; newContextWindow |]
+    let all = [| shell; readFile; writeFile; applyPatch; updatePlan; listDir; grepFiles; fileSearch; viewImage; imageGen; currentTime; sleep; webSearch; loadSkill; requestUserInput; spawnAgent; waitAgent; sendInput; closeAgent; listAgents; resumeAgent; interruptAgent; getContextRemaining; toolSearch; listAvailablePlugins; requestPluginInstall; listMcpResources; readMcpResource; listMcpResourceTemplates; waitForEnvironment; sendMessageToUser; execCommand; writeStdin; requestPermissions; newContextWindow |]
 
 module Prompt =
     let defaultInstructions =
