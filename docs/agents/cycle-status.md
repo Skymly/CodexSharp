@@ -158,11 +158,30 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Do not: reopen #97; claim official @Visualize desktop preview or ChatGPT cloud viz; implement Sites hosting or Focused/Canvas; add VisualizeHost or FeatureSpec; mint visualize JSON-RPC; extract MainView chrome; start C8 in the same hop as this retro; Electron; steal codex://.
 - Verification: feature PR 99 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
 
+### C8 多终端 — accepted
+
+- Destination: Goal Named cycle C8 — TERM-02 (`docs/DESKTOP_REQUIREMENTS.md`)
+- Feature:
+  - Map: [[C8] Multi-tab terminals](https://github.com/Skymly/CodexSharp/issues/104)
+  - Spec: [[C8] Spec: multi-tab terminals](https://github.com/Skymly/CodexSharp/issues/107)
+  - S1 [[C8][TERM-02] Multi-tab terminals](https://github.com/Skymly/CodexSharp/issues/106) — [PR 109](https://github.com/Skymly/CodexSharp/pull/109)
+- Architecture:
+  - Map: [[C8] Architecture map](https://github.com/Skymly/CodexSharp/issues/110)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260912-102435.html`
+  - [Keep DesktopTerminalTabs; no TerminalHost; empty architecture pool](https://github.com/Skymly/CodexSharp/issues/112) — keep DesktopTerminalTabs; MainView strip thin caller; CommandExecBroker separate; no chrome extract; empty architecture pool
+  - Spec: [Architecture spec: no C8 implement slices](https://github.com/Skymly/CodexSharp/issues/114) — S1–Sn empty; no ready-for-agent debt
+- Retro:
+  - Went well: one named ID shipped as one vertical PR (TERM-02 second tab without losing first; per-tab process isolation); DesktopTerminalTabs I/O-free Runtime list; existing command/exec unique ui-term-N; empty architecture pool legal after that ID; Council replaced HITL; did not pre-write docs/DESKTOP_C8.md.
+  - Keep: DesktopTerminalTabs as tab-list module; MainView thin strip adapter; CommandExecBroker as process module; in-session same cwd; fake IModelClient; workspace-write; no live ConPTY in CI.
+  - Change later (not this cycle): MainView.fs is still wide; TERM-03 shell picker; tab persistence.
+  - Do not: reopen #106; extract TerminalHost; merge CommandExecBroker into the tab list; mint terminal/* RPC; implement TERM-03/04/05/06; start C9 in the same hop as this retro; Electron; steal codex://.
+- Verification: feature PR 109 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
+
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-C8 多终端 — architecture empty. Destination: Goal Named cycle C8 — TERM-02 (`docs/DESKTOP_REQUIREMENTS.md`). Feature S1 [PR 109](https://github.com/Skymly/CodexSharp/pull/109). Architecture map: [[C8] Architecture map](https://github.com/Skymly/CodexSharp/issues/110). Chart: `C:\Users\98217\AppData\Local\Temp\architecture-review-20260912-102435.html`. [Keep DesktopTerminalTabs; no TerminalHost; empty architecture pool](https://github.com/Skymly/CodexSharp/issues/112). Spec: [Architecture spec: no C8 implement slices](https://github.com/Skymly/CodexSharp/issues/114) — S1–Sn empty. Retro next. Do not pre-write docs/DESKTOP_C8.md. Do not start C9. MX / section 5.2 WON'T remain out of scope.
+None. C8 is accepted. Named cycles on this Goal are complete (K=1). Do not start C9. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
