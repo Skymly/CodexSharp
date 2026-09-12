@@ -162,7 +162,7 @@ M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder
 
 ## Current cycle
 
-None. C7 is accepted. Named cycles on this Goal are complete (K=1). Do not start C8. MX / section 5.2 WON'T remain out of scope.
+C8 多终端 — charting. Destination: Goal Named cycle C8 — TERM-02 (`docs/DESKTOP_REQUIREMENTS.md`). Map: [[C8] Multi-tab terminals](https://github.com/Skymly/CodexSharp/issues/104). No child tickets; hop D mints S1 TERM-02. Do not pre-write docs/DESKTOP_C8.md. Do not start C9. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
