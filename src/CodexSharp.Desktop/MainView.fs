@@ -101,9 +101,7 @@ type ScreenState =
       Sections: SectionRow list
       Skills: string
       Models: string list
-      Terminal: string
-      TermIn: string
-      TermPid: string
+      TermTabs: DesktopTerminalTabs
       ShowOnboarding: bool
       OnboardingDismissed: bool
       ShowTrust: bool
@@ -399,7 +397,7 @@ module MainView =
             let timeline =
                 current.Timeline
                 |> List.map (fun x -> if x.Id = callId || x.ToolCallId = callId then { x with Text = x.Text + text } else x)
-            state.Set { current with Timeline = timeline; Terminal = current.Terminal + text }
+            state.Set { current with Timeline = timeline; TermTabs = current.TermTabs.AppendToActive(text) }
         | AgentEvent.ItemCompleted item ->
             let header =
                 if item.Kind = "user_message" && current.Header = "New thread" then
@@ -714,9 +712,7 @@ module MainView =
                           Sections = []
                           Skills = "Loading skills…"
                           Models = []
-                          Terminal = ""
-                          TermIn = ""
-                          TermPid = ""
+                          TermTabs = DesktopTerminalTabs.Start()
                           ShowOnboarding = false
                           OnboardingDismissed = false
                           ShowTrust = false
@@ -1092,11 +1088,7 @@ module MainView =
                         session.add_ExecOutput (
                             Action<string, string>(fun pid text ->
                                 Dispatcher.UIThread.Post(fun () ->
-                                    if pid = state.Current.TermPid && text <> "" then
-                                        let clipped =
-                                            let next = state.Current.Terminal + text
-                                            if next.Length > 8000 then next.Substring(next.Length - 8000) else next
-                                        state.Set { state.Current with Terminal = clipped })))
+                                    state.Set { state.Current with TermTabs = state.Current.TermTabs.AppendDelta(pid, text) })))
                         session.add_FuzzyHits (
                             Action<string, string>(fun sid text ->
                                 Dispatcher.UIThread.Post(fun () ->
@@ -1816,7 +1808,11 @@ module MainView =
                                     if listed.TryGetProperty("data", &data) && data.ValueKind = JsonValueKind.Array then
                                         data.EnumerateArray() |> Seq.map (fun x -> x.GetRawText()) |> Seq.toList
                                     else []
-                                let extra = if String.IsNullOrWhiteSpace state.Current.TermPid then [] else [ "desktop-term " + state.Current.TermPid ]
+                                let extra =
+                                    state.Current.TermTabs.All
+                                    |> Seq.filter (fun t -> t.Running)
+                                    |> Seq.map (fun t -> "desktop-term " + t.Id)
+                                    |> Seq.toList
                                 let msg = if lines.IsEmpty && extra.IsEmpty then "no background terminals" else String.Join(Environment.NewLine, extra @ lines)
                                 Dispatcher.UIThread.Post(fun () -> addNote "agent_message" msg)
                             with ex ->
@@ -4617,9 +4613,29 @@ module MainView =
                                                 TextBlock.margin (Thickness(0, 12, 0, 0))
                                                 TextBlock.isVisible state.Current.ShowTerminal
                                             ]
+                                            StackPanel.create [
+                                                StackPanel.isVisible state.Current.ShowTerminal
+                                                StackPanel.orientation Orientation.Horizontal
+                                                StackPanel.spacing 4.
+                                                StackPanel.children (
+                                                    (state.Current.TermTabs.All
+                                                     |> Seq.map (fun tab ->
+                                                         Button.create [
+                                                             Button.content (tab.Id.Replace("ui-term-", ""))
+                                                             Button.onClick (fun _ ->
+                                                                 state.Set { state.Current with TermTabs = state.Current.TermTabs.Select(tab.Id) })
+                                                         ] :> IView)
+                                                     |> Seq.toList)
+                                                    @ [ Button.create [
+                                                            Button.content "+"
+                                                            Button.onClick (fun _ ->
+                                                                state.Set { state.Current with TermTabs = state.Current.TermTabs.Open() })
+                                                        ] :> IView ]
+                                                )
+                                            ]
                                             TextBlock.create [
                                                 TextBlock.isVisible state.Current.ShowTerminal
-                                                TextBlock.text (if String.IsNullOrWhiteSpace state.Current.Terminal then "command/exec stream. Type a command and Run." else state.Current.Terminal)
+                                                TextBlock.text (if String.IsNullOrWhiteSpace state.Current.TermTabs.Active.Buffer then "command/exec stream. Type a command and Run." else state.Current.TermTabs.Active.Buffer)
                                                 TextBlock.textWrapping TextWrapping.Wrap
                                                 TextBlock.foreground Theme.text
                                                 TextBlock.fontFamily (FontFamily "Cascadia Code, Consolas, monospace")
@@ -4633,15 +4649,15 @@ module MainView =
                                                         Button.dock Dock.Right
                                                         Button.content "Stop"
                                                         Button.onClick (fun _ ->
-                                                            let pid = state.Current.TermPid
-                                                            if pid <> "" then
+                                                            let pid = state.Current.TermTabs.Active.Id
+                                                            if state.Current.TermTabs.Active.Running then
                                                                 async {
                                                                     try
                                                                         do! session.TerminateExecAsync(pid) |> Async.AwaitTask |> Async.Ignore
                                                                     with _ ->
                                                                         ()
                                                                     Dispatcher.UIThread.Post(fun () ->
-                                                                        state.Set { state.Current with TermPid = "" })
+                                                                        state.Set { state.Current with TermTabs = state.Current.TermTabs.MarkExited(pid) })
                                                                 }
                                                                 |> Async.Start)
                                                     ]
@@ -4649,32 +4665,33 @@ module MainView =
                                                         Button.dock Dock.Right
                                                         Button.content "Run"
                                                         Button.onClick (fun _ ->
-                                                            let cmd = state.Current.TermIn.Trim()
-                                                            if cmd <> "" then
-                                                                let pid = "ui-term"
-                                                                state.Set { state.Current with TermPid = pid; Terminal = "> " + cmd + "\n" }
+                                                            let cmd = state.Current.TermTabs.Active.Input.Trim()
+                                                            if cmd <> "" && not state.Current.TermTabs.Active.Running then
+                                                                let next = state.Current.TermTabs.PrepareRun(cmd)
+                                                                let pid = next.Active.Id
+                                                                state.Set { state.Current with TermTabs = next }
                                                                 async {
                                                                     try
                                                                         let! _ = session.StartStreamingExecAsync(pid, cmd) |> Async.AwaitTask
                                                                         Dispatcher.UIThread.Post(fun () ->
-                                                                            state.Set { state.Current with TermPid = "" })
+                                                                            state.Set { state.Current with TermTabs = state.Current.TermTabs.MarkExited(pid) })
                                                                     with ex ->
                                                                         Dispatcher.UIThread.Post(fun () ->
-                                                                            state.Set { state.Current with Terminal = state.Current.Terminal + ex.Message; TermPid = "" })
+                                                                            state.Set { state.Current with TermTabs = state.Current.TermTabs.AppendDelta(pid, ex.Message).MarkExited(pid) })
                                                                 }
                                                                 |> Async.Start)
                                                     ]
                                                     TextBox.create [
                                                         TextBox.placeHolderText "shell command"
-                                                        TextBox.text state.Current.TermIn
-                                                        TextBox.onTextChanged (fun v -> state.Set { state.Current with TermIn = v })
+                                                        TextBox.text state.Current.TermTabs.Active.Input
+                                                        TextBox.onTextChanged (fun v -> state.Set { state.Current with TermTabs = state.Current.TermTabs.SetInput(v) })
                                                         TextBox.onKeyDown (fun e ->
                                                             if handleDesktopChord e then ()
-                                                            elif e.Key = Avalonia.Input.Key.Enter && state.Current.TermPid <> "" then
+                                                            elif e.Key = Avalonia.Input.Key.Enter && state.Current.TermTabs.Active.Running then
                                                                 e.Handled <- true
-                                                                let line = state.Current.TermIn + "\n"
-                                                                let pid = state.Current.TermPid
-                                                                state.Set { state.Current with TermIn = "" }
+                                                                let line = state.Current.TermTabs.Active.Input + "\n"
+                                                                let pid = state.Current.TermTabs.Active.Id
+                                                                state.Set { state.Current with TermTabs = state.Current.TermTabs.SetInput("") }
                                                                 async {
                                                                     do! session.WriteExecAsync(pid, line, false) |> Async.AwaitTask |> Async.Ignore
                                                                 }
