@@ -162,7 +162,7 @@ M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder
 
 ## Current cycle
 
-C8 多终端 — implementing. Destination: Goal Named cycle C8 — TERM-02 (`docs/DESKTOP_REQUIREMENTS.md`). Map: [[C8] Multi-tab terminals](https://github.com/Skymly/CodexSharp/issues/104). Spec: [[C8] Spec: multi-tab terminals](https://github.com/Skymly/CodexSharp/issues/107). S1 [[C8][TERM-02] Multi-tab terminals](https://github.com/Skymly/CodexSharp/issues/106) ready-for-agent. Do not pre-write docs/DESKTOP_C8.md. Do not start C9. MX / section 5.2 WON'T remain out of scope.
+C8 多终端 — architecture. Destination: Goal Named cycle C8 — TERM-02 (`docs/DESKTOP_REQUIREMENTS.md`). Feature: [[C8] Multi-tab terminals](https://github.com/Skymly/CodexSharp/issues/104) S1 [PR 109](https://github.com/Skymly/CodexSharp/pull/109). Architecture map: [[C8] Architecture map](https://github.com/Skymly/CodexSharp/issues/110). Chart: `C:\Users\98217\AppData\Local\Temp\architecture-review-20260912-102435.html`. Hop F chart only — no implement children. Do not pre-write docs/DESKTOP_C8.md. Do not start C9. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
