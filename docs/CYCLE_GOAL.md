@@ -6,16 +6,18 @@ Do not paste the skill files. Set **K** in the Outcome. Token budget is not comp
 
 ## K = 1 — close the current cycle
 
-Current live state (see `docs/agents/cycle-status.md`): M2 feature slices are already merged. K = 1 means finish M2's architecture sweep + retro, then complete.
+Current live state (see `docs/agents/cycle-status.md`): C7 is accepted. Named cycles on the previous Goal are complete. K = 1 means finish **C8 多终端** (TERM-02), then complete. Do not start C9.
 
 ```text
 /goal Close 1 complete milestone cycle on CodexSharp. Follow /goal-hop. When hop G would block, follow docs/agents/milestone-cycle.md. Grilling uses Council in that file.
 
 ## Outcome
-Accept the current cycle (M2) under docs/agents/milestone-cycle.md: architecture map, debt tickets emptied, retro recorded. Do not reopen M1/M2 feature issues. Do not start M3.
+Accept Named cycle C8 — TERM-02 (多终端) under docs/agents/milestone-cycle.md: wayfinder map, feature slice shipped, architecture map, debt tickets emptied, retro recorded. Do not reopen C1–C7 or M1/M2 feature issues. Do not start C9. MX / section 5.2 WON'T are not destinations.
+
+Authoritative IDs: docs/DESKTOP_REQUIREMENTS.md TERM-02. Do not pre-write docs/DESKTOP_C8.md.
 
 Verified by all of:
-- docs/agents/cycle-status.md lists M2 as accepted, with architecture and retro recorded
+- docs/agents/cycle-status.md lists C8 as accepted, with architecture and retro recorded
 - no open ready-for-agent issues for that cycle
 - ./build.ps1 Test green on the default branch
 
@@ -25,7 +27,7 @@ Reaching a token budget is not completion.
 
 ## K = N — close N cycles
 
-Swap N. After M2 is accepted, the next in-scope destination is M3 (`docs/DESKTOP_REQUIREMENTS.md` section 5.1). MX is out of scope; if N overshoots the roadmap the Goal blocks.
+Swap N. After C8 is accepted, the next destination must be named by a new Goal (do not substitute §5.1 whole M3). MX is out of scope; if N overshoots the named list the Goal blocks.
 
 ```text
 /goal Close N complete milestone cycles on CodexSharp. Follow /goal-hop. When hop G would block, follow docs/agents/milestone-cycle.md. Grilling uses Council in that file.
