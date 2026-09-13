@@ -1,8 +1,20 @@
 namespace CodexSharp.Runtime;
 
-public sealed record DesktopTerminalTab(string Id, string Buffer, string Input, bool Running);
+public sealed record DesktopTerminalTab(string Id, string Buffer, string Input, bool Running, string Shell = "powershell")
+{
+    public IReadOnlyList<string> ExecArgv(string command)
+    {
+        command ??= "";
+        if (string.Equals(Shell, "cmd", StringComparison.OrdinalIgnoreCase))
+        {
+            return ["cmd.exe", "/c", command];
+        }
 
-/// In-session desktop terminal tabs for TERM-02. I/O-free; no cwd per tab; no persistence.
+        return ["powershell.exe", "-NoLogo", "-NoProfile", "-Command", command];
+    }
+}
+
+/// In-session desktop terminal tabs for TERM-02/TERM-03. I/O-free; no cwd per tab; no persistence.
 public sealed class DesktopTerminalTabs
 {
     public const int BufferCap = 8000;
@@ -43,6 +55,13 @@ public sealed class DesktopTerminalTabs
     public DesktopTerminalTabs SetInput(string input)
     {
         return WithActive(t => t with { Input = input ?? "" });
+    }
+
+    public DesktopTerminalTabs SetShell(string shell)
+    {
+        if (Active.Running) return this;
+        var next = string.Equals(shell, "cmd", StringComparison.OrdinalIgnoreCase) ? "cmd" : "powershell";
+        return WithActive(t => t.Shell == next ? t : t with { Shell = next });
     }
 
     public DesktopTerminalTabs PrepareRun(string command)

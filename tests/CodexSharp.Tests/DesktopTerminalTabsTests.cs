@@ -96,4 +96,50 @@ public class DesktopTerminalTabsTests
         var tabs = DesktopTerminalTabs.Start().AppendDelta("other", "nope");
         Assert.Equal("", tabs.Active.Buffer);
     }
+
+    [Fact]
+    public void Start_defaults_to_powershell()
+    {
+        var tabs = DesktopTerminalTabs.Start();
+        Assert.Equal("powershell", tabs.Active.Shell);
+    }
+
+    [Fact]
+    public void Open_defaults_to_powershell_not_last_pick()
+    {
+        var tabs = DesktopTerminalTabs.Start().SetShell("cmd").Open();
+        Assert.Equal("cmd", tabs.All[0].Shell);
+        Assert.Equal("powershell", tabs.All[1].Shell);
+        Assert.Equal("powershell", tabs.Active.Shell);
+    }
+
+    [Fact]
+    public void SetShell_cmd_before_run()
+    {
+        var tabs = DesktopTerminalTabs.Start().SetShell("cmd");
+        Assert.Equal("cmd", tabs.Active.Shell);
+        Assert.False(tabs.Active.Running);
+    }
+
+    [Fact]
+    public void SetShell_on_running_tab_is_noop()
+    {
+        var tabs = DesktopTerminalTabs.Start().PrepareRun("echo one").SetShell("cmd");
+        Assert.Equal("powershell", tabs.Active.Shell);
+        Assert.True(tabs.Active.Running);
+    }
+
+    [Fact]
+    public void ExecArgv_powershell_is_powershell_exe()
+    {
+        var argv = DesktopTerminalTabs.Start().Active.ExecArgv("echo hi");
+        Assert.Equal(new[] { "powershell.exe", "-NoLogo", "-NoProfile", "-Command", "echo hi" }, argv);
+    }
+
+    [Fact]
+    public void ExecArgv_cmd_is_cmd_exe()
+    {
+        var argv = DesktopTerminalTabs.Start().SetShell("cmd").Active.ExecArgv("echo hi");
+        Assert.Equal(new[] { "cmd.exe", "/c", "echo hi" }, argv);
+    }
 }
