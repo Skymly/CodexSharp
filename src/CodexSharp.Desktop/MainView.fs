@@ -4633,6 +4633,23 @@ module MainView =
                                                         ] :> IView ]
                                                 )
                                             ]
+                                            StackPanel.create [
+                                                StackPanel.isVisible state.Current.ShowTerminal
+                                                StackPanel.orientation Orientation.Horizontal
+                                                StackPanel.spacing 4.
+                                                StackPanel.children [
+                                                    Button.create [
+                                                        Button.content (if state.Current.TermTabs.Active.Shell = "cmd" then "PS" else "PS*")
+                                                        Button.onClick (fun _ ->
+                                                            state.Set { state.Current with TermTabs = state.Current.TermTabs.SetShell("powershell") })
+                                                    ]
+                                                    Button.create [
+                                                        Button.content (if state.Current.TermTabs.Active.Shell = "cmd" then "cmd*" else "cmd")
+                                                        Button.onClick (fun _ ->
+                                                            state.Set { state.Current with TermTabs = state.Current.TermTabs.SetShell("cmd") })
+                                                    ]
+                                                ]
+                                            ]
                                             TextBlock.create [
                                                 TextBlock.isVisible state.Current.ShowTerminal
                                                 TextBlock.text (if String.IsNullOrWhiteSpace state.Current.TermTabs.Active.Buffer then "command/exec stream. Type a command and Run." else state.Current.TermTabs.Active.Buffer)
@@ -4672,7 +4689,7 @@ module MainView =
                                                                 state.Set { state.Current with TermTabs = next }
                                                                 async {
                                                                     try
-                                                                        let! _ = session.StartStreamingExecAsync(pid, cmd) |> Async.AwaitTask
+                                                                        let! _ = session.StartStreamingExecAsync(pid, next.Active.ExecArgv(cmd)) |> Async.AwaitTask
                                                                         Dispatcher.UIThread.Post(fun () ->
                                                                             state.Set { state.Current with TermTabs = state.Current.TermTabs.MarkExited(pid) })
                                                                     with ex ->
