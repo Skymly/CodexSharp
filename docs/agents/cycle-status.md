@@ -181,7 +181,7 @@ M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder
 
 ## Current cycle
 
-C9 终端程序选择 — charting. Destination: Goal Named cycle C9 — TERM-03 (`docs/DESKTOP_REQUIREMENTS.md`). Map: [[C9] Terminal program picker](https://github.com/Skymly/CodexSharp/issues/117). No child tickets; hop D mints S1 TERM-03. Do not pre-write docs/DESKTOP_C9.md. Do not start C10. MX / section 5.2 WON'T remain out of scope.
+C9 终端程序选择 — implementing. Destination: Goal Named cycle C9 — TERM-03 (`docs/DESKTOP_REQUIREMENTS.md`). Map: [[C9] Terminal program picker](https://github.com/Skymly/CodexSharp/issues/117). Spec: [[C9] Spec: terminal program picker](https://github.com/Skymly/CodexSharp/issues/119). S1 [[C9][TERM-03] Terminal program picker](https://github.com/Skymly/CodexSharp/issues/120) ready-for-agent. Do not pre-write docs/DESKTOP_C9.md. Do not start C10. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
