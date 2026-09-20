@@ -1104,9 +1104,14 @@ public sealed class AppServerSession
         _client.CallAsync(AppServerMethods.CommandExec, new { command = new[] { command }, cwd = Environment.CurrentDirectory });
 
     public Task<JsonElement> StartStreamingExecAsync(string processId, string command) =>
-        _client.CallAsync(AppServerMethods.CommandExec, new
+        StartStreamingExecAsync(processId, new[] { command });
+
+    public Task<JsonElement> StartStreamingExecAsync(string processId, IReadOnlyList<string> command)
+    {
+        var argv = command as string[] ?? [.. command];
+        return _client.CallAsync(AppServerMethods.CommandExec, new
         {
-            command = new[] { command },
+            command = argv,
             processId,
             streamStdin = true,
             streamStdoutStderr = true,
@@ -1115,6 +1120,7 @@ public sealed class AppServerSession
             disableTimeout = true,
             cwd = Environment.CurrentDirectory,
         });
+    }
 
     public Task WriteExecAsync(string processId, string text, bool closeStdin = false)
     {
