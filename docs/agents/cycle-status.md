@@ -181,7 +181,7 @@ M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder
 
 ## Current cycle
 
-C9 终端程序选择 — implementing. Destination: Goal Named cycle C9 — TERM-03 (`docs/DESKTOP_REQUIREMENTS.md`). Map: [[C9] Terminal program picker](https://github.com/Skymly/CodexSharp/issues/117). Spec: [[C9] Spec: terminal program picker](https://github.com/Skymly/CodexSharp/issues/119). S1 [[C9][TERM-03] Terminal program picker](https://github.com/Skymly/CodexSharp/issues/120) ready-for-agent. Do not pre-write docs/DESKTOP_C9.md. Do not start C10. MX / section 5.2 WON'T remain out of scope.
+C9 终端程序选择 — architecture. Destination: Goal Named cycle C9 — TERM-03 (`docs/DESKTOP_REQUIREMENTS.md`). Feature: [[C9] Terminal program picker](https://github.com/Skymly/CodexSharp/issues/117). Spec: [[C9] Spec: terminal program picker](https://github.com/Skymly/CodexSharp/issues/119). S1 [[C9][TERM-03] Terminal program picker](https://github.com/Skymly/CodexSharp/issues/120) — [PR 122](https://github.com/Skymly/CodexSharp/pull/122). Architecture map: [[C9] Architecture map](https://github.com/Skymly/CodexSharp/issues/123). Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260920-205245.html`. Hop F chart only — no implement children. Do not pre-write docs/DESKTOP_C9.md. Do not start C10. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
