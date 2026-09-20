@@ -177,11 +177,30 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Do not: reopen #106; extract TerminalHost; merge CommandExecBroker into the tab list; mint terminal/* RPC; implement TERM-03/04/05/06; start C9 in the same hop as this retro; Electron; steal codex://.
 - Verification: feature PR 109 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
 
+### C9 终端程序选择 — accepted
+
+- Destination: Goal Named cycle C9 — TERM-03 (`docs/DESKTOP_REQUIREMENTS.md`)
+- Feature:
+  - Map: [[C9] Terminal program picker](https://github.com/Skymly/CodexSharp/issues/117)
+  - Spec: [[C9] Spec: terminal program picker](https://github.com/Skymly/CodexSharp/issues/119)
+  - S1 [[C9][TERM-03] Terminal program picker](https://github.com/Skymly/CodexSharp/issues/120) — [PR 122](https://github.com/Skymly/CodexSharp/pull/122)
+- Architecture:
+  - Map: [[C9] Architecture map](https://github.com/Skymly/CodexSharp/issues/123)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260920-205245.html`
+  - [Keep DesktopTerminalTabs Shell; no TerminalHost; empty architecture pool](https://github.com/Skymly/CodexSharp/issues/125) — keep Shell + ExecArgv on DesktopTerminalTabs; MainView picker thin adapter; no ShellDetect; CommandExecBroker separate; no chrome extract; empty architecture pool
+  - Spec: [Architecture spec: no C9 implement slices](https://github.com/Skymly/CodexSharp/issues/127) — S1–Sn empty; no ready-for-agent debt
+- Retro:
+  - Went well: one named ID shipped as one vertical PR (TERM-03 new-tab PowerShell vs cmd picker); DesktopTerminalTabs I/O-free Shell + ExecArgv; existing command/exec multi-arg argv; empty architecture pool legal after that ID; Council replaced HITL; did not pre-write docs/DESKTOP_C9.md.
+  - Keep: DesktopTerminalTabs Shell + ExecArgv as tab-list module; MainView thin picker adapter; CommandExecBroker as process module; always PS+cmd with PATH I/O out of the tab list; agent sandbox Windows-native PowerShell; SetShell only while !Running; Open() defaults to powershell not last-pick; fake IModelClient; workspace-write; no live ConPTY in CI.
+  - Change later (not this cycle): MainView.fs is still wide; Git Bash/WSL as a later ID; tab persistence; CommandExec count==1 wrap.
+  - Do not: reopen #120; extract TerminalHost; mint ShellDetect; merge CommandExecBroker into the tab list; mint terminal/* RPC; unify agent sandbox with the UI picker; implement TERM-04/05/06; start C10 in the same hop as this retro; Electron; steal codex://.
+- Verification: feature PR 122 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
+
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-C9 终端程序选择 — architecture empty. Destination: Goal Named cycle C9 — TERM-03 (`docs/DESKTOP_REQUIREMENTS.md`). Feature: [[C9] Terminal program picker](https://github.com/Skymly/CodexSharp/issues/117). Spec: [[C9] Spec: terminal program picker](https://github.com/Skymly/CodexSharp/issues/119). S1 [[C9][TERM-03] Terminal program picker](https://github.com/Skymly/CodexSharp/issues/120) — [PR 122](https://github.com/Skymly/CodexSharp/pull/122). Architecture map: [[C9] Architecture map](https://github.com/Skymly/CodexSharp/issues/123). Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260920-205245.html`. [Keep DesktopTerminalTabs Shell; no TerminalHost; empty architecture pool](https://github.com/Skymly/CodexSharp/issues/125). Architecture spec: [Architecture spec: no C9 implement slices](https://github.com/Skymly/CodexSharp/issues/127) — S1–Sn empty. Retro next. Do not pre-write docs/DESKTOP_C9.md. Do not start C10. MX / section 5.2 WON'T remain out of scope.
+None. C9 is accepted. Named cycles on this Goal are complete (K=1). Do not start C10. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
