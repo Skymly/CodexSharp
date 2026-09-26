@@ -261,7 +261,9 @@ M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder
 
 ## Current cycle
 
-None. C12 is accepted. Do not start C13 in this hop. MX / section 5.2 WON'T remain out of scope.
+None. C10, C11, and C12 are accepted. Do not start C13. MX / section 5.2 WON'T remain out of scope.
+
+Acceptance gate, not a new cycle: `./build.ps1 Test` on `6def8f1` was red. Windows CI hit a sharing violation creating `config.toml` (EnsureLayout wrote it without the retry already used by WriteConfigText). The local run failed `Prefers_visual_and_round_trips_draft` because `python` is the Windows Store stub. The gate fix retries that create under the existing config lock, and the editor test uses `edit.cmd`. Not C13.
 
 ## Next destinations (if K > 1)
 
