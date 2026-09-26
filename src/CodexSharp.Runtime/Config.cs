@@ -426,6 +426,11 @@ public sealed class WorkspaceSandbox(CodexConfig config, IEnumerable<string>? ex
         {
             throw new InvalidOperationException($"Sandbox denied read outside workspace: {full}");
         }
+
+        if (IsHomeSecret(full, config.Home))
+        {
+            throw new InvalidOperationException($"Sandbox denied read of secret file: {full}");
+        }
     }
 
     public void EnsureWritable(string path)
@@ -486,12 +491,42 @@ public sealed class WorkspaceSandbox(CodexConfig config, IEnumerable<string>? ex
         return IsInside(full, git) || IsInside(full, dotCodex) || IsInside(full, home);
     }
 
-    private static bool IsInside(string path, string root)
+    internal static bool IsInside(string path, string root)
     {
         var normalized = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var normalizedRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         return normalized.Equals(normalizedRoot, StringComparison.OrdinalIgnoreCase)
                || normalized.StartsWith(normalizedRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static bool IsHomeSecret(string path, string home)
+    {
+        if (string.IsNullOrWhiteSpace(home) || !IsInside(path, home))
+        {
+            return false;
+        }
+
+        var name = Path.GetFileName(path);
+        if (string.IsNullOrEmpty(name))
+        {
+            return false;
+        }
+
+        if (name.Equals("auth.json", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("token", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("id_rsa", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("id_dsa", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("id_ecdsa", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("id_ed25519", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var ext = Path.GetExtension(name);
+        return ext.Equals(".pem", StringComparison.OrdinalIgnoreCase)
+            || ext.Equals(".key", StringComparison.OrdinalIgnoreCase)
+            || ext.Equals(".p12", StringComparison.OrdinalIgnoreCase)
+            || ext.Equals(".pfx", StringComparison.OrdinalIgnoreCase);
     }
 
     public static SandboxMode ParseSandbox(string? s)

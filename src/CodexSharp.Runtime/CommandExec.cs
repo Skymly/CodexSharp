@@ -48,7 +48,7 @@ public sealed class CommandExecBroker
             var sandbox = new WorkspaceSandbox(config);
             workdir = string.IsNullOrWhiteSpace(cwd) ? sandbox.Cwd : sandbox.Resolve(cwd);
             if (WorkspaceSandbox.ParseSandbox(config.SandboxMode) != SandboxMode.DangerFullAccess
-                && !workdir.StartsWith(sandbox.Cwd, StringComparison.OrdinalIgnoreCase))
+                && !WorkspaceSandbox.IsInside(workdir, sandbox.Cwd))
             {
                 throw new InvalidOperationException($"Sandbox denied workdir: {workdir}");
             }
@@ -214,7 +214,7 @@ public sealed class CommandExecBroker
         var sandbox = new WorkspaceSandbox(config);
         var workdir = string.IsNullOrWhiteSpace(cwd) ? sandbox.Cwd : sandbox.Resolve(cwd);
         if (WorkspaceSandbox.ParseSandbox(config.SandboxMode) != SandboxMode.DangerFullAccess
-            && !workdir.StartsWith(sandbox.Cwd, StringComparison.OrdinalIgnoreCase))
+            && !WorkspaceSandbox.IsInside(workdir, sandbox.Cwd))
         {
             throw new InvalidOperationException($"Sandbox denied workdir: {workdir}");
         }

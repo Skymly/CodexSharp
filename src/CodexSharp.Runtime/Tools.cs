@@ -19,7 +19,7 @@ public sealed class ShellExecutor(WorkspaceSandbox sandbox, CodexConfig config, 
         var timeout = root.TryGetProperty("timeout_ms", out var t) && t.TryGetInt32(out var ms) ? ms : 60_000;
 
         if (WorkspaceSandbox.ParseSandbox(config.SandboxMode) != SandboxMode.DangerFullAccess
-            && !workdir.StartsWith(sandbox.Cwd, StringComparison.OrdinalIgnoreCase)
+            && !WorkspaceSandbox.IsInside(workdir, sandbox.Cwd)
             && !SessionSandbox.Allows(workdir))
         {
             return new ToolCallResult(call.Id, call.Name, $"Sandbox denied workdir: {workdir}", true);
