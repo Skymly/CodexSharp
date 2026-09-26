@@ -2641,7 +2641,8 @@ module MainView =
                                                                             let setupLog = jsStr result "setupLog"
                                                                             let setupOk = jsBool result "setupOk"
                                                                             let status =
-                                                                                if setupLog <> "" && not setupOk then "setup failed: " + setupLog
+                                                                                if setupLog <> "" && not setupOk then
+                                                                                    (if jsBool result "setupRan" then "setup failed: " else "setup was not started: ") + setupLog
                                                                                 else "worktree " + cwd
                                                                             Dispatcher.UIThread.Post(fun () ->
                                                                                 state.Set
