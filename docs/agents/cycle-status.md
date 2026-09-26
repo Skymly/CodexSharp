@@ -216,11 +216,33 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Change later (not this cycle): MainView.fs is still wide (C11); write_file/apply_patch on-request still does not prompt; a shell process can still read auth.json because this host has no OS isolation; TERM-04 is C12.
   - Do not: reopen #132/#133/#134; extract SandboxPolicy or TerminalHost; gate every command/exec as network denial; extend the command-substring blacklist; mint a firewall or elevated helper; start C11 in the same hop as this retro; Electron; steal codex://.
 - Verification: feature PRs 137, 138, and 139 green on windows-latest. No open ready-for-agent. Named tests Shell_workdir_sibling_prefix_is_denied, Workspace_write_cannot_read_auth_json, Exec_policy_prompt_requests_approval_and_does_not_run, Network_claim_matches_enforcement, and Windows_sandbox_status_is_not_os_isolation exist and do not lock ready as OS isolation. Architecture S1-Sn were empty.
+### C11 拆三个上帝文件 — accepted
+
+- Destination: Goal Named cycle C11 — split AppServerHost, Program.cs, and MainView.fs without a new protocol
+- Feature:
+  - Map: [[C11] Split three god files](https://github.com/Skymly/CodexSharp/issues/147)
+  - Spec: [[C11] Spec: split three god files](https://github.com/Skymly/CodexSharp/issues/152)
+  - S1 [[C11] AppServerHost dispatch handlers](https://github.com/Skymly/CodexSharp/issues/149) — [PR 154](https://github.com/Skymly/CodexSharp/pull/154)
+  - S2 [[C11] CLI verb handlers](https://github.com/Skymly/CodexSharp/issues/150) — [PR 155](https://github.com/Skymly/CodexSharp/pull/155)
+  - S3 [[C11] MainView settings and rail](https://github.com/Skymly/CodexSharp/issues/151) — [PR 156](https://github.com/Skymly/CodexSharp/pull/156)
+- Architecture:
+  - Map: [[C11] Architecture map](https://github.com/Skymly/CodexSharp/issues/157)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260927-c11.html`
+  - [Shrink DesktopChrome panel interface; one architecture slice](https://github.com/Skymly/CodexSharp/issues/159) — panels call DesktopChrome writeConfig, toggleFeature, and refreshChrome; drop unused callbacks; no view-host; leave MainView forwarders; keep the HandleLineAsync string switch; no public router
+  - Spec: [[C11] Architecture spec: shrink DesktopChrome panel interface](https://github.com/Skymly/CodexSharp/issues/162)
+  - S1 [[C11] Shrink DesktopChrome panel interface](https://github.com/Skymly/CodexSharp/issues/161) — [PR 164](https://github.com/Skymly/CodexSharp/pull/164)
+- Retro:
+  - Went well: three file cuts shipped in order as PRs 154, 155, and 156; HandleLineAsync kept the existing method-string switch; TUI stayed on the existing App Server session; settings and the shared rail moved into DesktopChrome; architecture S1 shrank the panel interface in PR 164 without a second ticket; Council replaced HITL; did not pre-write docs/DESKTOP_C11.md.
+  - Keep: partial AppServerHost with private domain methods; partial Program plus unchanged verb types; DesktopChrome as the settings and rail module; panel signatures settings(state, session, modelDraft), activity(state, resumeThread), scheduled(state, session), and rail(state, session, modelDraft, insertMention, refreshPrComments, handleDesktopChord); MainView forwarders; fake IModelClient; workspace-write; Avalonia.FuncUI.
+  - Lines: map baselines win over the Goal fallback of AppServerHost.cs 4113. Raw `(Get-Content -LiteralPath).Count` on master after PR 164: MainView.fs 4944 → 3811 (1133), AppServerHost.cs 4211 → 1393 (2818), Program.cs 3607 → 1992 (1615). Each end is smaller and each drop is at least 1000. Moved bodies live in AppServerHost.Exec.cs, AppServerHost.Session.cs, AppServerHost.Thread.cs, AppServerHost.Turn.cs, AppServerHost.Workspace.cs, Program.Verbs.cs plus the sibling CLI types, and DesktopChrome.fs (1048). Not comment or test deletion.
+  - Change later (not this cycle): MainView forwarders remain; sidebar, composer, timeline, and Work stay in MainView; write_file/apply_patch on-request still does not prompt; a shell process can still read auth.json because this host has no OS isolation; TERM-04 is C12.
+  - Do not: reopen #149/#150/#151/#161; mint a public router or new JSON-RPC method names; extract TerminalHost; merge CommandExecBroker into the tab list; mint terminal/* RPC; extract sidebar, composer, timeline, or Work; start C12 in the same hop as this retro; Electron; steal codex://.
+- Verification: feature PRs 154, 155, and 156 and architecture PR 164 green on windows-latest. No open ready-for-agent. Named feature S1-Sn were not empty. Architecture S1 was not empty.
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-C11 拆三个上帝文件 — architecture implementing. Destination: Goal Named cycle C11 — split AppServerHost, Program.cs, and MainView.fs without a new protocol. Feature: [[C11] Split three god files](https://github.com/Skymly/CodexSharp/issues/147). Spec: [[C11] Spec: split three god files](https://github.com/Skymly/CodexSharp/issues/152). S1 [[C11] AppServerHost dispatch handlers](https://github.com/Skymly/CodexSharp/issues/149) — [PR 154](https://github.com/Skymly/CodexSharp/pull/154). S2 [[C11] CLI verb handlers](https://github.com/Skymly/CodexSharp/issues/150) — [PR 155](https://github.com/Skymly/CodexSharp/pull/155). S3 [[C11] MainView settings and rail](https://github.com/Skymly/CodexSharp/issues/151) — [PR 156](https://github.com/Skymly/CodexSharp/pull/156). Architecture map: [[C11] Architecture map](https://github.com/Skymly/CodexSharp/issues/157). Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260927-c11.html`. [Shrink DesktopChrome panel interface; one architecture slice](https://github.com/Skymly/CodexSharp/issues/159) resolved. Architecture spec: [[C11] Architecture spec: shrink DesktopChrome panel interface](https://github.com/Skymly/CodexSharp/issues/162) — not ready-for-agent. Architecture S1 [[C11] Shrink DesktopChrome panel interface](https://github.com/Skymly/CodexSharp/issues/161) — [PR 164](https://github.com/Skymly/CodexSharp/pull/164). No public router. No second ticket. Do not pre-write docs/DESKTOP_C11.md. Do not start C12. MX / section 5.2 WON'T remain out of scope.
+None. C11 is accepted. Do not start C12 in this hop. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
