@@ -469,10 +469,10 @@ public sealed partial class AppServerHost
                 WorktreeBindings.Bind(session.Thread.Id, tree);
                 Wire(session);
                 _threads[session.Thread.Id] = session;
-                if (!setup.Ok)
+                var warning = LocalEnvSetup.WarningText(setup);
+                if (warning is not null)
                 {
-                    var log = "setup script failed: " + setup.ScriptPath + Environment.NewLine + setup.Log;
-                    new JsonlThreadStore().AppendEvent(session.Thread.Id, AgentEvent.NewWarning(log));
+                    new JsonlThreadStore().AppendEvent(session.Thread.Id, AgentEvent.NewWarning(warning));
                 }
                 Notify("thread/started", new { thread = ThreadDto(session) });
                 Result(id, new

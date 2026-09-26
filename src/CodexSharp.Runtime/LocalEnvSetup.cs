@@ -116,6 +116,17 @@ public static class LocalEnvSetup
         }
     }
 
+    public static string? WarningText(SetupScriptResult setup)
+    {
+        if (setup.Ok)
+        {
+            return null;
+        }
+
+        var head = setup.Ran ? "setup script failed" : "setup script was not started";
+        return head + ": " + setup.ScriptPath + Environment.NewLine + setup.Log;
+    }
+
     private static SetupScriptResult NotStarted(string script, string log) =>
         new(script, false, false, log);
 

@@ -74,6 +74,31 @@ public class LocalEnvSetupTests
         Directory.Delete(root, true);
     }
 
+        [Fact]
+    public void Not_started_warning_does_not_say_failed()
+    {
+        var text = LocalEnvSetup.WarningText(new SetupScriptResult("setup.cmd", false, false, "approval required; setup script was not started"));
+        Assert.NotNull(text);
+        Assert.DoesNotContain("failed", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("not started", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("denied", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("isolated", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("official sandbox", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Ran_and_failed_warning_may_say_failed()
+    {
+        var text = LocalEnvSetup.WarningText(new SetupScriptResult("setup.cmd", true, false, "setup script exited 7"));
+        Assert.Contains("failed", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Missing_script_warning_is_absent()
+    {
+        Assert.Null(LocalEnvSetup.WarningText(new SetupScriptResult(null, false, true, "")));
+    }
+
     private static CodexConfig Config(string cwd, string approval)
     {
         var cfg = ConfigService.Load(cwd, sandboxOverride: "workspace-write", approvalOverride: approval, ignoreUserConfig: true);
