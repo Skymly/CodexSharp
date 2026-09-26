@@ -196,12 +196,31 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Do not: reopen #120; extract TerminalHost; mint ShellDetect; merge CommandExecBroker into the tab list; mint terminal/* RPC; unify agent sandbox with the UI picker; implement TERM-04/05/06; start C10 in the same hop as this retro; Electron; steal codex://.
 - Verification: feature PR 122 green on windows-latest. No open ready-for-agent. Named feature S1–Sn were not empty.
 
+### C10 壳层策略与文案 — accepted
+
+- Destination: Goal Named cycle C10 — shell policy matches copy (not a new desktop ID)
+- Feature:
+  - Map: [[C10] Shell policy matches copy](https://github.com/Skymly/CodexSharp/issues/130)
+  - Spec: [[C10] Spec: shell policy matches copy](https://github.com/Skymly/CodexSharp/issues/135)
+  - S1 [[C10] Shell workdir and secret reads](https://github.com/Skymly/CodexSharp/issues/132) — [PR 137](https://github.com/Skymly/CodexSharp/pull/137)
+  - S2 [[C10] Exec policy prompt and network claim](https://github.com/Skymly/CodexSharp/issues/133) — [PR 138](https://github.com/Skymly/CodexSharp/pull/138)
+  - S3 [[C10] Windows sandbox status is not OS isolation](https://github.com/Skymly/CodexSharp/issues/134) — [PR 139](https://github.com/Skymly/CodexSharp/pull/139)
+- Architecture:
+  - Map: [[C10] Architecture map](https://github.com/Skymly/CodexSharp/issues/140)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260927-c10.html`
+  - [Keep ToolApproval and WorkspaceSandbox; empty architecture pool](https://github.com/Skymly/CodexSharp/issues/142) — keep ToolApproval in Core plus the Runtime probe; command/exec stays ExecPolicy Prompt only; IsInside and IsHomeSecret stay on WorkspaceSandbox; no chrome extract; empty architecture pool
+  - Spec: [Architecture spec: no C10 implement slices](https://github.com/Skymly/CodexSharp/issues/144) — S1-Sn empty; no ready-for-agent debt
+- Retro:
+  - Went well: three named cuts shipped as three PRs in order; sibling workdir uses IsInside; secret reads under CODEXSHARP_HOME are denied without banning skill files; ExecDecision.Prompt enters the existing approval path; prompt and doctor no longer say network is denied; windowsSandbox status is limited, not ready; empty architecture pool legal after those cuts; Council replaced HITL; did not pre-write docs/DESKTOP_C10.md.
+  - Keep: WorkspaceSandbox.IsInside and IsHomeSecret; ToolApproval as the F# approval gate; Runtime ExecPolicyPromptProbe; command/exec Prompt-only; WindowsSandbox.LimitedStatus; settings render Describe(); host config reads of auth.json; fake IModelClient; workspace-write.
+  - Change later (not this cycle): MainView.fs is still wide (C11); write_file/apply_patch on-request still does not prompt; a shell process can still read auth.json because this host has no OS isolation; TERM-04 is C12.
+  - Do not: reopen #132/#133/#134; extract SandboxPolicy or TerminalHost; gate every command/exec as network denial; extend the command-substring blacklist; mint a firewall or elevated helper; start C11 in the same hop as this retro; Electron; steal codex://.
+- Verification: feature PRs 137, 138, and 139 green on windows-latest. No open ready-for-agent. Named tests Shell_workdir_sibling_prefix_is_denied, Workspace_write_cannot_read_auth_json, Exec_policy_prompt_requests_approval_and_does_not_run, Network_claim_matches_enforcement, and Windows_sandbox_status_is_not_os_isolation exist and do not lock ready as OS isolation. Architecture S1-Sn were empty.
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-C10 壳层策略与文案 — architecture empty. Destination: Goal Named cycle C10 — shell policy matches copy (not a new desktop ID). Feature: [[C10] Shell policy matches copy](https://github.com/Skymly/CodexSharp/issues/130). Spec: [[C10] Spec: shell policy matches copy](https://github.com/Skymly/CodexSharp/issues/135). S1 [[C10] Shell workdir and secret reads](https://github.com/Skymly/CodexSharp/issues/132) — [PR 137](https://github.com/Skymly/CodexSharp/pull/137). S2 [[C10] Exec policy prompt and network claim](https://github.com/Skymly/CodexSharp/issues/133) — [PR 138](https://github.com/Skymly/CodexSharp/pull/138). S3 [[C10] Windows sandbox status is not OS isolation](https://github.com/Skymly/CodexSharp/issues/134) — [PR 139](https://github.com/Skymly/CodexSharp/pull/139). Architecture map: [[C10] Architecture map](https://github.com/Skymly/CodexSharp/issues/140). Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260927-c10.html`. [Keep ToolApproval and WorkspaceSandbox; empty architecture pool](https://github.com/Skymly/CodexSharp/issues/142) resolved. Architecture spec: [Architecture spec: no C10 implement slices](https://github.com/Skymly/CodexSharp/issues/144) — S1-Sn empty. Retro next. Do not pre-write docs/DESKTOP_C10.md. Do not start C11. MX / section 5.2 WON'T remain out of scope.
-
+None. C10 is accepted. Do not start C11 in this hop. MX / section 5.2 WON'T remain out of scope.
 ## Next destinations (if K > 1)
 
 Named cycles on the active Goal (do not substitute §5.1 rows):
