@@ -2548,9 +2548,9 @@ module MainView =
                             ]
                         )
                     ]
-                    DesktopChrome.settingsPanel state session writeConfig toggleFeature refreshChrome resumeThread
-                    DesktopChrome.activityPanel state session writeConfig toggleFeature refreshChrome resumeThread
-                    DesktopChrome.scheduledPanel state session writeConfig toggleFeature refreshChrome resumeThread
+                    DesktopChrome.settingsPanel state session modelDraft
+                    DesktopChrome.activityPanel state resumeThread
+                    DesktopChrome.scheduledPanel state session
                     Grid.create [
                         Grid.columnDefinitions (if state.Current.ShowSidebar then "260,*,220" else "0,*,220")
                         Grid.children [
@@ -3803,7 +3803,7 @@ module MainView =
                                     ]
                                 ]
                             ]
-                            DesktopChrome.rail state session refreshChrome insertMention refreshPrComments handleDesktopChord
+                            DesktopChrome.rail state session modelDraft insertMention refreshPrComments handleDesktopChord
                         ]
                     ]
                 ]

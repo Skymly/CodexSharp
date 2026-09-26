@@ -209,7 +209,7 @@ module DesktopChrome =
             }
             |> Async.Start
 
-    let settingsPanel (state: IWritable<ScreenState>) (session: AppServerSession) (writeConfig: string -> string -> unit) (toggleFeature: string -> bool -> unit) (refreshChrome: unit -> unit) (resumeThread: string -> unit) =
+    let settingsPanel (state: IWritable<ScreenState>) (session: AppServerSession) (modelDraft: IWritable<string>) =
 
         if state.Current.ShowSettings then
             Border.create [
@@ -234,17 +234,17 @@ module DesktopChrome =
                                     Button.create [
                                         Button.content "friendly"
                                         Button.onClick (fun _ ->
-                                            writeConfig "personality" "friendly")
+                                            writeConfig session state modelDraft "personality" "friendly")
                                     ]
                                     Button.create [
                                         Button.content "pragmatic"
                                         Button.onClick (fun _ ->
-                                            writeConfig "personality" "pragmatic")
+                                            writeConfig session state modelDraft "personality" "pragmatic")
                                     ]
                                     Button.create [
                                         Button.content "professional"
                                         Button.onClick (fun _ ->
-                                            writeConfig "personality" "professional")
+                                            writeConfig session state modelDraft "personality" "professional")
                                     ]
                                 ]
                             ]
@@ -254,11 +254,11 @@ module DesktopChrome =
                                 StackPanel.children [
                                     Button.create [
                                         Button.content "Dark"
-                                        Button.onClick (fun _ -> writeConfig "tui_theme" "dark")
+                                        Button.onClick (fun _ -> writeConfig session state modelDraft "tui_theme" "dark")
                                     ]
                                     Button.create [
                                         Button.content "Light"
-                                        Button.onClick (fun _ -> writeConfig "tui_theme" "light")
+                                        Button.onClick (fun _ -> writeConfig session state modelDraft "tui_theme" "light")
                                     ]
                                 ]
                             ]
@@ -268,23 +268,23 @@ module DesktopChrome =
                                 StackPanel.children [
                                     Button.create [
                                         Button.content "Notify auto"
-                                        Button.onClick (fun _ -> writeConfig "tui_notifications" "auto")
+                                        Button.onClick (fun _ -> writeConfig session state modelDraft "tui_notifications" "auto")
                                     ]
                                     Button.create [
                                         Button.content "OSC9"
-                                        Button.onClick (fun _ -> writeConfig "tui_notifications" "osc9")
+                                        Button.onClick (fun _ -> writeConfig session state modelDraft "tui_notifications" "osc9")
                                     ]
                                     Button.create [
                                         Button.content "BEL"
-                                        Button.onClick (fun _ -> writeConfig "tui_notifications" "bel")
+                                        Button.onClick (fun _ -> writeConfig session state modelDraft "tui_notifications" "bel")
                                     ]
                                     Button.create [
                                         Button.content "Windows"
-                                        Button.onClick (fun _ -> writeConfig "tui_notifications" "os")
+                                        Button.onClick (fun _ -> writeConfig session state modelDraft "tui_notifications" "os")
                                     ]
                                     Button.create [
                                         Button.content "Off"
-                                        Button.onClick (fun _ -> writeConfig "tui_notifications" "off")
+                                        Button.onClick (fun _ -> writeConfig session state modelDraft "tui_notifications" "off")
                                     ]
                                 ]
                             ]
@@ -331,7 +331,7 @@ module DesktopChrome =
                                             Button.create [
                                                 Button.content (row.Name + "  " + (if row.Enabled then "on" else "off"))
                                                 Button.horizontalAlignment HorizontalAlignment.Stretch
-                                                Button.onClick (fun _ -> toggleFeature row.Name row.Enabled)
+                                                Button.onClick (fun _ -> toggleFeature session state modelDraft row.Name row.Enabled)
                                             ] :> IView)
                                 )
                             ]
@@ -361,7 +361,7 @@ module DesktopChrome =
                                                             McpConfig.Remove row.Name |> ignore
                                                             async {
                                                                 do! session.ReloadMcpAsync() |> Async.AwaitTask |> Async.Ignore
-                                                                Dispatcher.UIThread.Post(fun () -> refreshChrome ())
+                                                                Dispatcher.UIThread.Post(fun () -> refreshChrome session state modelDraft)
                                                             }
                                                             |> Async.Start)
                                                     ]
@@ -389,7 +389,7 @@ module DesktopChrome =
                                                     state.Set { state.Current with McpDraft = "" }
                                                     async {
                                                         do! session.ReloadMcpAsync() |> Async.AwaitTask |> Async.Ignore
-                                                        Dispatcher.UIThread.Post(fun () -> refreshChrome ())
+                                                        Dispatcher.UIThread.Post(fun () -> refreshChrome session state modelDraft)
                                                     }
                                                     |> Async.Start)
                                     ]
@@ -416,7 +416,7 @@ module DesktopChrome =
                 Border.height 0.
             ]
 
-    let activityPanel (state: IWritable<ScreenState>) (session: AppServerSession) (writeConfig: string -> string -> unit) (toggleFeature: string -> bool -> unit) (refreshChrome: unit -> unit) (resumeThread: string -> unit) =
+    let activityPanel (state: IWritable<ScreenState>) (resumeThread: string -> unit) =
 
         if state.Current.ShowActivity then
             Border.create [
@@ -494,7 +494,7 @@ module DesktopChrome =
                 Border.height 0.
             ]
 
-    let scheduledPanel (state: IWritable<ScreenState>) (session: AppServerSession) (writeConfig: string -> string -> unit) (toggleFeature: string -> bool -> unit) (refreshChrome: unit -> unit) (resumeThread: string -> unit) =
+    let scheduledPanel (state: IWritable<ScreenState>) (session: AppServerSession) =
 
         if state.Current.ShowScheduled then
             Border.create [
@@ -561,7 +561,7 @@ module DesktopChrome =
                 Border.height 0.
             ]
 
-    let rail (state: IWritable<ScreenState>) (session: AppServerSession) (refreshChrome: unit -> unit) (insertMention: string -> unit) (refreshPrComments: unit -> unit) (handleDesktopChord: Avalonia.Input.KeyEventArgs -> bool) =
+    let rail (state: IWritable<ScreenState>) (session: AppServerSession) (modelDraft: IWritable<string>) (insertMention: string -> unit) (refreshPrComments: unit -> unit) (handleDesktopChord: Avalonia.Input.KeyEventArgs -> bool) =
 
         Border.create [
             Grid.column 2
@@ -841,7 +841,7 @@ module DesktopChrome =
                                         async {
                                             try
                                                 do! session.SetMemoryModeAsync("enabled") |> Async.AwaitTask |> Async.Ignore
-                                                refreshChrome ()
+                                                refreshChrome session state modelDraft
                                             with _ ->
                                                 ()
                                         }
@@ -853,7 +853,7 @@ module DesktopChrome =
                                         async {
                                             try
                                                 do! session.SetMemoryModeAsync("disabled") |> Async.AwaitTask |> Async.Ignore
-                                                refreshChrome ()
+                                                refreshChrome session state modelDraft
                                             with _ ->
                                                 ()
                                         }
@@ -865,7 +865,7 @@ module DesktopChrome =
                                         async {
                                             try
                                                 do! session.ResetMemoryAsync() |> Async.AwaitTask |> Async.Ignore
-                                                refreshChrome ()
+                                                refreshChrome session state modelDraft
                                             with _ ->
                                                 ()
                                         }
@@ -905,7 +905,7 @@ module DesktopChrome =
                                 async {
                                     try
                                         do! session.ReconcilePluginsNowAsync() |> Async.AwaitTask |> Async.Ignore
-                                        refreshChrome ()
+                                        refreshChrome session state modelDraft
                                     with _ ->
                                         ()
                                 }
@@ -930,7 +930,7 @@ module DesktopChrome =
                                                 async {
                                                     try
                                                         do! session.InstallPluginAsync(name, null) |> Async.AwaitTask |> Async.Ignore
-                                                        Dispatcher.UIThread.Post(fun () -> refreshChrome ())
+                                                        Dispatcher.UIThread.Post(fun () -> refreshChrome session state modelDraft)
                                                     with _ ->
                                                         ()
                                                 }
@@ -1014,7 +1014,7 @@ module DesktopChrome =
                                                         async {
                                                             try
                                                                 do! session.WriteSkillEnabledAsync(row.Name, not row.Enabled) |> Async.AwaitTask |> Async.Ignore
-                                                                refreshChrome ()
+                                                                refreshChrome session state modelDraft
                                                             with _ ->
                                                                 ()
                                                         }
