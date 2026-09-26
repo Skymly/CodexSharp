@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.Text.Json;
+using CodexSharp.Core;
+using CodexSharp.Protocol;
 
 namespace CodexSharp.Runtime;
 
@@ -38,7 +41,7 @@ public static class LocalEnvSetup
         return null;
     }
 
-    public static SetupScriptResult Run(string projectRoot, string worktreeCwd)
+    public static SetupScriptResult Run(string projectRoot, string worktreeRoot, string worktreeCwd, CodexConfig config)
     {
         var script = FindWindowsScript(projectRoot);
         if (script is null)
@@ -46,31 +49,44 @@ public static class LocalEnvSetup
             return new SetupScriptResult(null, false, true, "");
         }
 
-        worktreeCwd = Path.GetFullPath(string.IsNullOrWhiteSpace(worktreeCwd) ? projectRoot : worktreeCwd);
-        Directory.CreateDirectory(worktreeCwd);
+        if (!TryResolve(projectRoot, out var projectFull)
+            || !WorkspaceSandbox.IsInside(script, projectFull)
+            || IsSecret(script, config))
+        {
+            return NotStarted(script, "path rejected; setup script was not started");
+        }
+
+        if (!TryResolve(worktreeRoot, out var treeFull)
+            || !TryResolve(worktreeCwd, out var workdir)
+            || !WorkspaceSandbox.IsInside(workdir, treeFull)
+            || IsSecret(workdir, config))
+        {
+            return NotStarted(script, "path rejected; setup script was not started");
+        }
+
+        var argv = ScriptArgv(script);
+        var command = string.Join(' ', argv);
+        var call = new ToolCallRequest("setup", "shell", JsonSerializer.Serialize(new { command }));
+        if (config is null || ToolApproval.needsApproval(config, call))
+        {
+            return NotStarted(script, "approval required; setup script was not started");
+        }
+
+        Directory.CreateDirectory(workdir);
         try
         {
             var psi = new ProcessStartInfo
             {
-                WorkingDirectory = worktreeCwd,
+                FileName = argv[0],
+                WorkingDirectory = workdir,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
             };
-            if (script.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase))
+            for (var i = 1; i < argv.Count; i++)
             {
-                psi.FileName = "powershell.exe";
-                psi.ArgumentList.Add("-NoProfile");
-                psi.ArgumentList.Add("-NonInteractive");
-                psi.ArgumentList.Add("-File");
-                psi.ArgumentList.Add(script);
-            }
-            else
-            {
-                psi.FileName = "cmd.exe";
-                psi.ArgumentList.Add("/c");
-                psi.ArgumentList.Add(script);
+                psi.ArgumentList.Add(argv[i]);
             }
 
             using var proc = Process.Start(psi);
@@ -98,5 +114,33 @@ public static class LocalEnvSetup
         {
             return new SetupScriptResult(script, true, false, ex.Message);
         }
+    }
+
+    private static SetupScriptResult NotStarted(string script, string log) =>
+        new(script, false, false, log);
+
+    private static bool TryResolve(string? path, out string full)
+    {
+        full = "";
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        full = Path.GetFullPath(path);
+        return true;
+    }
+
+    private static bool IsSecret(string path, CodexConfig? config) =>
+        config is not null && WorkspaceSandbox.IsHomeSecret(path, config.Home);
+
+    private static IReadOnlyList<string> ScriptArgv(string script)
+    {
+        if (script.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase))
+        {
+            return ["powershell.exe", "-NoProfile", "-NonInteractive", "-File", script];
+        }
+
+        return ["cmd.exe", "/c", script];
     }
 }

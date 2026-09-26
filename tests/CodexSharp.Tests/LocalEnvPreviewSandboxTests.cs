@@ -1,3 +1,4 @@
+using CodexSharp.Protocol;
 using CodexSharp.Runtime;
 
 namespace CodexSharp.Tests;
@@ -12,7 +13,7 @@ public class LocalEnvSetupTests
         Directory.CreateDirectory(Path.Combine(root, ".codexsharp"));
         Directory.CreateDirectory(wt);
         File.WriteAllText(Path.Combine(root, ".codexsharp", "setup.cmd"), "echo boom>&2\r\nexit /b 7\r\n");
-        var result = LocalEnvSetup.Run(root, wt);
+        var result = LocalEnvSetup.Run(root, root, wt, Config(root, "never"));
         Assert.True(result.Ran);
         Assert.False(result.Ok);
         Assert.False(string.IsNullOrWhiteSpace(result.Log));
@@ -25,13 +26,60 @@ public class LocalEnvSetupTests
     {
         var root = Path.Combine(Path.GetTempPath(), "codexsharp-setup-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
-        var result = LocalEnvSetup.Run(root, root);
+        var result = LocalEnvSetup.Run(root, root, root, Config(root, "never"));
         Assert.False(result.Ran);
         Assert.True(result.Ok);
         Directory.Delete(root, true);
     }
-}
 
+    [Fact]
+    public void Unapproved_setup_script_does_not_start_or_report_success()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "codexsharp-setup-" + Guid.NewGuid().ToString("N"));
+        var wt = Path.Combine(root, "wt");
+        var marker = Path.Combine(wt, "marker.txt");
+        Directory.CreateDirectory(Path.Combine(root, ".codexsharp"));
+        Directory.CreateDirectory(wt);
+        File.WriteAllText(Path.Combine(root, ".codexsharp", "setup.cmd"), "echo ran>\"" + marker + "\"\r\nexit /b 0\r\n");
+        var result = LocalEnvSetup.Run(root, root, wt, Config(root, "on-request"));
+        Assert.False(result.Ran);
+        Assert.False(result.Ok);
+        Assert.Contains("approval required", result.Log, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("not started", result.Log, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("denied", result.Log, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("isolated", result.Log, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("official sandbox", result.Log, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(marker));
+        Directory.Delete(root, true);
+    }
+
+    [Fact]
+    public void Setup_workdir_outside_worktree_root_does_not_start()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "codexsharp-setup-" + Guid.NewGuid().ToString("N"));
+        var tree = Path.Combine(root, "tree");
+        var outside = Path.Combine(root, "outside");
+        var marker = Path.Combine(outside, "marker.txt");
+        Directory.CreateDirectory(Path.Combine(root, ".codexsharp"));
+        Directory.CreateDirectory(tree);
+        Directory.CreateDirectory(outside);
+        File.WriteAllText(Path.Combine(root, ".codexsharp", "setup.cmd"), "echo ran>\"" + marker + "\"\r\nexit /b 0\r\n");
+        var result = LocalEnvSetup.Run(root, tree, outside, Config(root, "never"));
+        Assert.False(result.Ran);
+        Assert.False(result.Ok);
+        Assert.Contains("path rejected", result.Log, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("not started", result.Log, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("denied", result.Log, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(marker));
+        Directory.Delete(root, true);
+    }
+
+    private static CodexConfig Config(string cwd, string approval)
+    {
+        var cfg = ConfigService.Load(cwd, sandboxOverride: "workspace-write", approvalOverride: approval, ignoreUserConfig: true);
+        return new CodexConfig(cfg.Home, cfg.Model, cfg.ReasoningEffort, cfg.Provider, approval, "workspace-write", cfg.DeveloperInstructions, cfg.UserInstructions, cwd, false, cfg.MaxTurns);
+    }
+}
 public class SystemFilePreviewTests
 {
     [Fact]
