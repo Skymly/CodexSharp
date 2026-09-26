@@ -1,4 +1,7 @@
+using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using CodexSharp.Core;
 using CodexSharp.Protocol;
 
 namespace CodexSharp.Runtime;
@@ -143,4 +146,60 @@ public static class ExecPolicy
 
     private static string[] Tokenize(string command) =>
         command.Split([' ', '\t', '\n'], StringSplitOptions.RemoveEmptyEntries);
+}
+
+internal sealed class ExecPolicyPromptProbe : IExecPolicyPrompt
+{
+    public bool IsPrompt(CodexConfig cfg, ToolCallRequest call)
+    {
+        if (call.Name is not ("shell" or "exec_command"))
+        {
+            return false;
+        }
+
+        return ExecPolicy.Evaluate(ReadCommand(call.ArgumentsJson), cfg.Cwd) == ExecDecision.Prompt;
+    }
+
+    private static string ReadCommand(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(json) ? "{}" : json);
+            var root = doc.RootElement;
+            foreach (var name in new[] { "command", "cmd" })
+            {
+                if (!root.TryGetProperty(name, out var value))
+                {
+                    continue;
+                }
+
+                if (value.ValueKind == JsonValueKind.String)
+                {
+                    return value.GetString() ?? "";
+                }
+
+                if (value.ValueKind == JsonValueKind.Array)
+                {
+                    return string.Join(' ', value.EnumerateArray().Select(e => e.GetString()).Where(s => !string.IsNullOrWhiteSpace(s)));
+                }
+            }
+        }
+        catch
+        {
+            return "";
+        }
+
+        return "";
+    }
+}
+
+internal static class ExecPolicyPromptRegistration
+{
+#pragma warning disable CA2255
+    [ModuleInitializer]
+#pragma warning restore CA2255
+    internal static void Register()
+    {
+        ToolApproval.setProbe(new ExecPolicyPromptProbe());
+    }
 }

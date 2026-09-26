@@ -242,6 +242,11 @@ public static class DoctorProbe
             "sandbox_mode: " + cfg.SandboxMode,
             "default sandbox_mode: workspace-write",
             "approval_policy: " + cfg.ApprovalPolicy,
+            cfg.NetworkAccess
+                ? "network: allowed by config"
+                : string.Equals(cfg.ApprovalPolicy, "never", StringComparison.OrdinalIgnoreCase)
+                    ? "network: the host does not intercept network; approval never may run network commands"
+                    : "network: the host does not intercept network; shell and exec_command require approval before start",
         };
         var win = WindowsSandbox.Read();
         details.Add("windowsSandbox: " + win.Status);

@@ -30,10 +30,6 @@ public sealed class ShellExecutor(WorkspaceSandbox sandbox, CodexConfig config, 
         {
             return new ToolCallResult(call.Id, call.Name, $"Exec policy forbidden: {command}", true);
         }
-        if (policy == ExecDecision.Prompt && !string.Equals(config.ApprovalPolicy, "never", StringComparison.OrdinalIgnoreCase))
-        {
-            return new ToolCallResult(call.Id, call.Name, $"Exec policy requires approval: {command}", true);
-        }
 
         Directory.CreateDirectory(workdir);
 

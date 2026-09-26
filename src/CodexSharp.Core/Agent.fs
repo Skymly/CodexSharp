@@ -36,27 +36,48 @@ type NoopUserInputHost() =
         member _.RequestAsync(_, _, _) =
             Task.FromResult("{\"answers\":{},\"note\":\"no UI attached\"}")
 
+type IExecPolicyPrompt =
+    abstract IsPrompt: cfg: CodexConfig * call: ToolCallRequest -> bool
+
+module ToolApproval =
+    let mutable private probe : IExecPolicyPrompt option = None
+    let setProbe (value: IExecPolicyPrompt) = probe <- Some value
+
+    let private isPrompt (cfg: CodexConfig) (call: ToolCallRequest) =
+        match probe with
+        | None -> false
+        | Some p -> p.IsPrompt(cfg, call)
+
+    let needsApproval (cfg: CodexConfig) (call: ToolCallRequest) =
+        let approval = CodexConfig.approval cfg
+        let sandbox = CodexConfig.sandbox cfg
+        let shellish = call.Name = "shell" || call.Name = "exec_command"
+        if approval = Never then
+            false
+        elif shellish && (not cfg.NetworkAccess || isPrompt cfg call) then
+            true
+        else
+            match approval with
+            | Never -> false
+            | Untrusted ->
+                call.Name = "shell" || call.Name = "write_file" || call.Name = "apply_patch" || call.Name = "request_permissions" || call.Name = "exec_command"
+            | OnRequest ->
+                if call.Name = "request_permissions" then true
+                elif not shellish then false
+                else
+                    match sandbox with
+                    | DangerFullAccess -> false
+                    | ReadOnly -> true
+                    | WorkspaceWrite ->
+                        let args = call.ArgumentsJson.ToLowerInvariant()
+                        args.Contains "curl " || args.Contains "wget " || args.Contains "invoke-webrequest"
+                        || args.Contains "ssh " || args.Contains "rm -rf" || args.Contains "del /s"
+
 module AgentLoop =
     let private emit (deps: AgentDeps) evt = deps.Sink.Emit evt
 
     let private needsApproval (cfg: CodexConfig) (call: ToolCallRequest) =
-        let approval = CodexConfig.approval cfg
-        let sandbox = CodexConfig.sandbox cfg
-        match approval with
-        | Never -> false
-        | Untrusted ->
-            call.Name = "shell" || call.Name = "write_file" || call.Name = "apply_patch" || call.Name = "request_permissions" || call.Name = "exec_command"
-        | OnRequest ->
-            if call.Name = "request_permissions" then true
-            elif call.Name <> "shell" && call.Name <> "exec_command" then false
-            else
-                match sandbox with
-                | DangerFullAccess -> false
-                | ReadOnly -> true
-                | WorkspaceWrite ->
-                    let args = call.ArgumentsJson.ToLowerInvariant()
-                    args.Contains "curl " || args.Contains "wget " || args.Contains "invoke-webrequest"
-                    || args.Contains "ssh " || args.Contains "rm -rf" || args.Contains "del /s"
+        ToolApproval.needsApproval cfg call
 
     let private compactWithHooks (deps: AgentDeps) (history: ResizeArray<HistoryMessage>) =
         match deps.Hooks.Fire("PreCompact", "compact", "") with
