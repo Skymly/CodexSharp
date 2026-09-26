@@ -93,9 +93,31 @@ public static class CodexPaths
         Directory.CreateDirectory(Path.Combine(Home, "plugins"));
         Directory.CreateDirectory(Path.Combine(Home, "marketplaces"));
         Directory.CreateDirectory(Path.Combine(Home, "prompts"));
-        if (!File.Exists(ConfigFile))
+        if (File.Exists(ConfigFile))
         {
-            File.WriteAllText(ConfigFile, DefaultConfigToml);
+            return;
+        }
+        lock (ConfigGate())
+        {
+            for (var i = 0; i < 8; i++)
+            {
+                try
+                {
+                    if (File.Exists(ConfigFile))
+                    {
+                        return;
+                    }
+
+                    var tmp = ConfigFile + ".tmp";
+                    File.WriteAllText(tmp, DefaultConfigToml);
+                    File.Move(tmp, ConfigFile, overwrite: false);
+                    return;
+                }
+                catch (IOException) when (i < 7)
+                {
+                    Thread.Sleep(20 * (i + 1));
+                }
+            }
         }
     }
 

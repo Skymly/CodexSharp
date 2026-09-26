@@ -491,13 +491,12 @@ public class ExternalEditorTests
         try
         {
             Directory.CreateDirectory(home);
-            var script = Path.Combine(home, "edit.py");
-            File.WriteAllText(script, "import sys\np=sys.argv[1]\nopen(p,'a',encoding='utf-8').write('\\nfrom-editor')\n");
-            Environment.SetEnvironmentVariable("VISUAL", "python \"" + script + "\"");
+            var script = Path.Combine(home, "edit.cmd");
+            File.WriteAllText(script, "@echo off" + Environment.NewLine + "echo from-editor>>\"%~1\"" + Environment.NewLine);
+            Environment.SetEnvironmentVariable("VISUAL", script);
             Environment.SetEnvironmentVariable("EDITOR", "should-not-run");
             var cmd = ExternalEditor.ResolveCommand();
-            Assert.Equal("python", cmd[0]);
-            Assert.Equal(script, cmd[1]);
+            Assert.Equal(script, cmd[0]);
             var result = ExternalEditor.Edit("hello");
             Assert.Contains("hello", result);
             Assert.Contains("from-editor", result);
