@@ -104,6 +104,7 @@ public static class FileSearch
             string[] lines;
             try
             {
+                sandbox.EnsureReadable(file);
                 lines = File.ReadAllLines(file);
             }
             catch
