@@ -238,11 +238,30 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Change later (not this cycle): MainView forwarders remain; sidebar, composer, timeline, and Work stay in MainView; write_file/apply_patch on-request still does not prompt; a shell process can still read auth.json because this host has no OS isolation; TERM-04 is C12.
   - Do not: reopen #149/#150/#151/#161; mint a public router or new JSON-RPC method names; extract TerminalHost; merge CommandExecBroker into the tab list; mint terminal/* RPC; extract sidebar, composer, timeline, or Work; start C12 in the same hop as this retro; Electron; steal codex://.
 - Verification: feature PRs 154, 155, and 156 and architecture PR 164 green on windows-latest. No open ready-for-agent. Named feature S1-Sn were not empty. Architecture S1 was not empty.
+### C12 TERM-04 — accepted
+
+- Destination: Goal Named cycle C12 — TERM-04 on the C10 shell
+- Feature:
+  - Map: [[C12] TERM-04 worktree setup](https://github.com/Skymly/CodexSharp/issues/166)
+  - Spec: [[C12] Spec: TERM-04 worktree setup](https://github.com/Skymly/CodexSharp/issues/169)
+  - S1 [[C12][TERM-04] Gate worktree setup script](https://github.com/Skymly/CodexSharp/issues/168) — [PR 171](https://github.com/Skymly/CodexSharp/pull/171)
+- Architecture:
+  - Map: [[C12] Architecture map](https://github.com/Skymly/CodexSharp/issues/172)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260927-c12.html`
+  - [Stop saying setup failed when the script did not start; one architecture slice](https://github.com/Skymly/CodexSharp/issues/174) — change the prefix only when Ran is false; keep the one-shot -File starter; keep ToolApproval and WorkspaceSandbox; no SetupPolicy type; no ShellExecutor fold
+  - Spec: [[C12] Architecture spec: setup prefix when not started](https://github.com/Skymly/CodexSharp/issues/177)
+  - S1 [[C12] Stop saying setup failed when the script did not start](https://github.com/Skymly/CodexSharp/issues/176) — [PR 179](https://github.com/Skymly/CodexSharp/pull/179)
+- Retro:
+  - Went well: TERM-04 shipped on the existing thread/worktree/start path; LocalEnvSetup calls ToolApproval.needsApproval, WorkspaceSandbox.IsInside, and IsHomeSecret before Process.Start; an unapproved script does not start and is not reported as success; the failure log goes into the thread; the prefix no longer says failed when Ran is false; Council replaced HITL; did not pre-write docs/DESKTOP_C12.md.
+  - Keep: the Windows name list; the gated Run; WarningText; the existing setupRan field; cloudWorktree notConfigured; fake IModelClient; workspace-write; Avalonia.FuncUI.
+  - Change later (not this cycle): an allowed setup process can still read auth.json because this host has no OS isolation; IsHomeSecret is filename-based; write_file/apply_patch on-request still does not prompt; Git Bash and WSL stay out.
+  - Do not: reopen #168/#176; fold ShellExecutor; add a SetupPolicy type; mint terminal/* RPC or TerminalHost; implement TERM-05/06; add a permanent worktree or cloud success; start C13 in the same hop as this retro; Electron; steal codex://.
+- Verification: feature PR 171 and architecture PR 179 green on windows-latest. No open ready-for-agent. Unapproved_setup_script_does_not_start_or_report_success and Not_started_warning_does_not_say_failed exist and do not use a live model.
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-C12 TERM-04 — architecture implementing. Destination: Goal Named cycle C12 — TERM-04 on the C10 shell. Feature: [[C12] TERM-04 worktree setup](https://github.com/Skymly/CodexSharp/issues/166). Spec: [[C12] Spec: TERM-04 worktree setup](https://github.com/Skymly/CodexSharp/issues/169). S1 [[C12][TERM-04] Gate worktree setup script](https://github.com/Skymly/CodexSharp/issues/168) — [PR 171](https://github.com/Skymly/CodexSharp/pull/171). Architecture map: [[C12] Architecture map](https://github.com/Skymly/CodexSharp/issues/172). Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260927-c12.html`. [Stop saying setup failed when the script did not start; one architecture slice](https://github.com/Skymly/CodexSharp/issues/174) resolved. Architecture spec: [[C12] Architecture spec: setup prefix when not started](https://github.com/Skymly/CodexSharp/issues/177) — not ready-for-agent. Architecture S1 [[C12] Stop saying setup failed when the script did not start](https://github.com/Skymly/CodexSharp/issues/176) — [PR 179](https://github.com/Skymly/CodexSharp/pull/179). No SetupPolicy type. No ShellExecutor fold. Do not pre-write docs/DESKTOP_C12.md. Do not start C13. MX / section 5.2 WON'T remain out of scope.
+None. C12 is accepted. Do not start C13 in this hop. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
