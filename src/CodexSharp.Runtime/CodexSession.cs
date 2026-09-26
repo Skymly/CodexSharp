@@ -458,6 +458,7 @@ public sealed class CodexSession
     }
 
     public event Action<AgentEvent>? Event;
+    public void Raise(AgentEvent evt) => Event?.Invoke(evt);
     public CodexConfig Config => _config;
     public ThreadInfo Thread => _thread;
     public IReadOnlyList<string> ExtraReadRoots => _extraReadRoots;

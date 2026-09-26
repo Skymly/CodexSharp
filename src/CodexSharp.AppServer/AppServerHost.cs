@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Nodes;
+using CodexSharp.Core;
 using CodexSharp.Protocol;
 using CodexSharp.Runtime;
 
@@ -1076,9 +1077,30 @@ public sealed class AppServerHost
                     Error(id, -32001, $"Thread not loaded: {threadId}");
                     break;
                 }
-                var exec = new ShellExecutor(new WorkspaceSandbox(session.Config, session.ExtraReadRoots), session.Config);
-                var result = await exec.RunAsync(new ToolCallRequest(Ids.call (), "shell", JsonSerializer.Serialize(new { command })), ct);
-                Result(id, new { output = result.Output, isError = result.IsError });
+                var call = new ToolCallRequest(Ids.call(), "shell", JsonSerializer.Serialize(new { command }));
+                if (ToolApproval.needsApproval(session.Config, call))
+                {
+                    var capturedId = id.Clone();
+                    var capturedHasId = hasId;
+                    _ = Task.Run(async () =>
+                    {
+                        var denied = await DenyReasonAsync(session, call, ct);
+                        if (denied is not null)
+                        {
+                            if (capturedHasId) Result(capturedId, new { output = "Approval denied: " + denied, isError = false, status = "denied" });
+                            return;
+                        }
+
+                        var exec = new ShellExecutor(new WorkspaceSandbox(session.Config, session.ExtraReadRoots), session.Config);
+                        var result = await exec.RunAsync(call, ct);
+                        if (capturedHasId) Result(capturedId, new { output = result.Output, isError = result.IsError });
+                    }, ct);
+                    break;
+                }
+
+                var execNow = new ShellExecutor(new WorkspaceSandbox(session.Config, session.ExtraReadRoots), session.Config);
+                var resultNow = await execNow.RunAsync(call, ct);
+                Result(id, new { output = resultNow.Output, isError = resultNow.IsError });
                 break;
             }
 
@@ -2875,9 +2897,30 @@ public sealed class AppServerHost
                 var args = "{}";
                 if (paramsEl.ValueKind == JsonValueKind.Object && paramsEl.TryGetProperty("arguments", out var argEl))
                     args = argEl.GetRawText();
-                var exec = new BuiltinToolExecutor(toolSession.Config);
-                var result = await exec.ExecuteAsync(new ToolCallRequest(callId, tool, args), ct);
-                Result(id, new { success = !result.IsError, contentItems = new object[] { new { type = "inputText", text = result.Output } } });
+                var call = new ToolCallRequest(callId, tool, args);
+                if (ToolApproval.needsApproval(toolSession.Config, call))
+                {
+                    var capturedId = id.Clone();
+                    var capturedHasId = hasId;
+                    _ = Task.Run(async () =>
+                    {
+                        var denied = await DenyReasonAsync(toolSession, call, ct);
+                        if (denied is not null)
+                        {
+                            if (capturedHasId) Result(capturedId, new { success = false, status = "denied", contentItems = new object[] { new { type = "inputText", text = "Approval denied: " + denied } } });
+                            return;
+                        }
+
+                        var exec = new BuiltinToolExecutor(toolSession.Config);
+                        var result = await exec.ExecuteAsync(call, ct);
+                        if (capturedHasId) Result(capturedId, new { success = !result.IsError, contentItems = new object[] { new { type = "inputText", text = result.Output } } });
+                    }, ct);
+                    break;
+                }
+
+                var execNow = new BuiltinToolExecutor(toolSession.Config);
+                var resultNow = await execNow.ExecuteAsync(call, ct);
+                Result(id, new { success = !resultNow.IsError, contentItems = new object[] { new { type = "inputText", text = resultNow.Output } } });
                 break;
             }
 
@@ -3030,12 +3073,38 @@ public sealed class AppServerHost
                     rows = Int(ttySize, "rows", 24);
                     cols = Int(ttySize, "cols", 80);
                 }
+                var gateThread = Str(paramsEl, "threadId");
+                CodexSession? gateSession = null;
+                if (!string.IsNullOrWhiteSpace(gateThread))
+                {
+                    _threads.TryGetValue(gateThread, out gateSession);
+                }
+
+                gateSession ??= _threads.Values.FirstOrDefault();
+                var gateCall = new ToolCallRequest("gate", "exec_command", JsonSerializer.Serialize(new { command = string.Join(' ', argv) }));
                 var capturedId = id.Clone();
                 var capturedHasId = hasId;
+                if (CommandExecNeedsPrompt(cfg, argv) && gateSession is null)
+                {
+                    Result(id, new { started = false, status = "denied", output = "Approval denied: no session approver", isError = false });
+                    break;
+                }
+
+                var sessionForGate = gateSession;
                 _ = Task.Run(async () =>
                 {
                     try
                     {
+                        if (CommandExecNeedsPrompt(cfg, argv))
+                        {
+                            var denied = await DenyReasonAsync(sessionForGate!, gateCall, ct);
+                            if (denied is not null)
+                            {
+                                if (capturedHasId) Result(capturedId, new { started = false, status = "denied", output = "Approval denied: " + denied, isError = false });
+                                return;
+                            }
+                        }
+
                         var result = await _exec.RunAsync(
                             argv,
                             processId,
@@ -3536,6 +3605,35 @@ public sealed class AppServerHost
         }
 
         return false;
+    }
+
+    private static bool CommandExecNeedsPrompt(CodexConfig cfg, IReadOnlyList<string> argv)
+    {
+        if (string.Equals(cfg.ApprovalPolicy, "never", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return ExecPolicy.Evaluate(string.Join(' ', argv), cfg.Cwd) == ExecDecision.Prompt;
+    }
+
+    private static async Task<string?> DenyReasonAsync(CodexSession session, ToolCallRequest call, CancellationToken ct)
+    {
+        var requestId = Ids.approval();
+        var reason = "tool " + call.Name;
+        session.Raise(AgentEvent.NewApprovalNeeded(requestId, call.ArgumentsJson, session.Config.Cwd, reason));
+        var decision = await session.Approver.RequestAsync(requestId, call.ArgumentsJson, session.Config.Cwd, reason, ct);
+                if (decision.IsAllow)
+        {
+            return null;
+        }
+
+        if (decision.IsDeny)
+        {
+            return "denied";
+        }
+
+        return "aborted";
     }
 
     private void Wire(CodexSession session)

@@ -216,7 +216,8 @@ Rules:
 
         let network =
             if cfg.NetworkAccess then "Network access is allowed."
-            else "Network access is denied by default; ask for approval before using the network."
+            elif approval = Never then "The host does not intercept network. Approval never may run network commands."
+            else "The host does not intercept network. shell and exec_command require approval before start."
 
         let ask =
             match approval with
