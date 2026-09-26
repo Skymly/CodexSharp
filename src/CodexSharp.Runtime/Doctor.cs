@@ -270,13 +270,13 @@ public static class DoctorProbe
             summary = "sandbox is read-only";
         }
 
-        if (OperatingSystem.IsWindows() && win.Status != "ready")
+        if (OperatingSystem.IsWindows() && win.Status != WindowsSandbox.LimitedStatus)
         {
             if (status == DoctorStatus.Ok) status = DoctorStatus.Warning;
             if (win.JobObject)
             {
                 summary = "Job Object is available; windowsSandbox is notConfigured";
-                remediation ??= "Run codexsharp sandbox setup unelevated to mark the Job Object sandbox ready. The official Windows sandbox service is not shipped.";
+                remediation ??= "Run codexsharp sandbox setup unelevated to record Job Object kill-on-close. This is not an OS sandbox.";
             }
             else
             {

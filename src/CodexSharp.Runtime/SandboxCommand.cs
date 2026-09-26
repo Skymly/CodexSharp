@@ -16,7 +16,7 @@ public static class SandboxCommand
         if (verb is "status" || args.Length == 0)
         {
             var snap = WindowsSandbox.Read();
-            return new Result(snap.Status == "ready" ? 0 : 1,
+            return new Result(snap.Status == WindowsSandbox.LimitedStatus ? 0 : 1,
                 $"status     {snap.Status}\njobObject  {snap.JobObject}\nmode       {snap.Mode}\n",
                 snap.Status);
         }
@@ -25,7 +25,7 @@ public static class SandboxCommand
         {
             var mode = args.ElementAtOrDefault(1) ?? "unelevated";
             var snap = WindowsSandbox.Setup(mode, cwd);
-            return new Result(snap.Status == "ready" ? 0 : 1,
+            return new Result(snap.Status == WindowsSandbox.LimitedStatus ? 0 : 1,
                 snap.Status + (string.IsNullOrWhiteSpace(snap.Error) ? "" : "\n" + snap.Error),
                 snap.Status);
         }

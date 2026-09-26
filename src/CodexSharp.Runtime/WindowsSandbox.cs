@@ -8,6 +8,7 @@ public sealed record WindowsSandboxSnapshot(string Status, bool JobObject, strin
 public static class WindowsSandbox
 {
     public const int SetupVersion = 1;
+    public const string LimitedStatus = "limited";
 
     private static readonly object Gate = new();
     private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
@@ -29,7 +30,7 @@ public static class WindowsSandbox
                     var mode = root.TryGetProperty("mode", out var m) && m.ValueKind == JsonValueKind.String ? m.GetString() : null;
                     if (completed && job)
                     {
-                        return new WindowsSandboxSnapshot("ready", true, mode, null);
+                        return new WindowsSandboxSnapshot(LimitedStatus, true, mode, null);
                     }
                 }
             }
@@ -90,12 +91,22 @@ public static class WindowsSandbox
             return "elevated windowsSandbox is notConfigured. CodexSharp does not ship an official Windows sandbox helper.";
         }
 
-        if (snap.Status == "ready")
+        if (snap.Status == LimitedStatus)
         {
-            return "unelevated: Job Object kill-on-close + workspace-write path policy. This is not OS isolation.";
+            return NoteForStatus(snap.Status);
         }
 
-        return "windowsSandbox notConfigured. unelevated only records Job Object kill-on-close + workspace-write path policy; elevated stays notConfigured. This is not an OS elevated sandbox.";
+        return NoteForStatus(snap.Status);
+    }
+
+    public static string NoteForStatus(string? status)
+    {
+        if (string.Equals(status, LimitedStatus, StringComparison.Ordinal))
+        {
+            return "unelevated: Job Object kill-on-close + workspace-write path policy. This is not an OS sandbox.";
+        }
+
+        return "windowsSandbox notConfigured. unelevated only records Job Object kill-on-close + workspace-write path policy; elevated stays notConfigured. This is not an OS sandbox.";
     }
 }
 

@@ -620,8 +620,8 @@ internal static class Program
         foreach (var line in result.Output.Replace("\r\n", "\n").Split('\n'))
         {
             if (line.Length == 0) continue;
-            var color = result.Status is "ready" or "ok" ? "green" : result.Status == "notConfigured" ? "yellow" : "grey";
-            if (result.ExitCode != 0 && result.Status != "ready" && result.Status != "notConfigured" && result.Status != "ok")
+            var color = result.Status is "ok" ? "green" : result.Status is "limited" or "notConfigured" ? "yellow" : "grey";
+            if (result.ExitCode != 0 && result.Status != "limited" && result.Status != "notConfigured" && result.Status != "ok")
             {
                 color = "red";
             }
@@ -2634,7 +2634,7 @@ internal static class Tui
                 {
                     var snap = await session.App.SetupWindowsSandboxAsync("unelevated", session.Config.Cwd);
                     var status = snap.TryGetProperty("status", out var st) ? st.GetString() ?? snap.ToString() : snap.ToString();
-                    AnsiConsole.MarkupLine(status == "ready" ? "[green]ready[/]" : "[yellow]" + Markup.Escape(status) + "[/]");
+                    AnsiConsole.MarkupLine("[yellow]" + Markup.Escape(status) + "[/]");
                 }
                 catch (Exception ex)
                 {
