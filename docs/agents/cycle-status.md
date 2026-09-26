@@ -220,11 +220,11 @@ M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder
 
 ## Current cycle
 
-None. C10 is accepted. Do not start C11 in this hop. MX / section 5.2 WON'T remain out of scope.
+C11 拆三个上帝文件 — charting. Destination: Goal Named cycle C11 — split AppServerHost, Program.cs, and MainView.fs without a new protocol. Map: [[C11] Split three god files](https://github.com/Skymly/CodexSharp/issues/147). No child tickets; hop D mints S1-S3 in order. Baseline raw lines: MainView.fs 4944, AppServerHost.cs 4211, Program.cs 3607. Do not pre-write docs/DESKTOP_C11.md. Do not start C12. MX / section 5.2 WON'T remain out of scope.
+
 ## Next destinations (if K > 1)
 
 Named cycles on the active Goal (do not substitute §5.1 rows):
 
-- C11 — split AppServerHost, Program.cs, and MainView.fs. Not this hop.
 - C12 — TERM-04 on the C10 shell. Not this hop.
 - MX / §5.2 WON'T: out of scope
