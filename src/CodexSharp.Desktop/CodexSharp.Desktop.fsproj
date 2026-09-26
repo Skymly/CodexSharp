@@ -8,7 +8,9 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="DesktopTypes.fs" />
     <Compile Include="PopoutWindow.fs" />
+    <Compile Include="DesktopChrome.fs" />
     <Compile Include="MainView.fs" />
     <Compile Include="Program.fs" />
     <AvaloniaResource Include="Assets\**" />
