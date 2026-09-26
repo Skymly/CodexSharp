@@ -200,10 +200,12 @@ M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder
 
 ## Current cycle
 
-None. C9 is accepted. Named cycles on this Goal are complete (K=1). Do not start C10. MX / section 5.2 WON'T remain out of scope.
+C10 壳层策略与文案 — charting. Destination: Goal Named cycle C10 — shell policy matches copy (not a new desktop ID). Map: [[C10] Shell policy matches copy](https://github.com/Skymly/CodexSharp/issues/130). No child tickets; hop D mints S1-S3 in order. Do not pre-write docs/DESKTOP_C10.md. Do not start C11. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
 Named cycles on the active Goal (do not substitute §5.1 rows):
 
+- C11 — split AppServerHost, Program.cs, and MainView.fs. Not this hop.
+- C12 — TERM-04 on the C10 shell. Not this hop.
 - MX / §5.2 WON'T: out of scope

@@ -6,7 +6,7 @@
 
 ## K = 1 — 收口当前这一轮
 
-当前实况（见 `docs/agents/cycle-status.md`）：C8 已 accepted。上一 Goal 的 named cycles 已结束。K = 1 表示做完 **C9 终端程序选择**（TERM-03）后 complete。不要开始 C10。
+当前实况（见 `docs/agents/cycle-status.md`）：C9 已 accepted。活动 Goal 点名 C10、C11、C12（K = 3）。C10 正在 chart。下面的 K = 1 块是上一 Goal 的示例，不是当前指令。不要开始 C13、M3、MX。不要预先写 docs/DESKTOP_C10.md。
 
 ```text
 /goal Close 1 complete milestone cycle on CodexSharp. Follow /goal-hop. When hop G would block, follow docs/agents/milestone-cycle.md. Grilling uses Council in that file.
@@ -27,7 +27,7 @@
 
 ## K = N — 收口 N 个周期
 
-把 N 换掉。C9 accepted 之后，下一目的地必须由新 Goal 点名（不要整段替换成 §5.1 的 M3）。MX 不在范围；若 N 超出已点名列表则 Goal 停在 blocked。
+把 N 换掉。下一目的地必须由新 Goal 点名（不要整段替换成 §5.1 的 M3，也不要自行开 C13）。当前 Goal 已点名 C10、C11、C12。MX 不在范围；若 N 超出已点名列表则 Goal 停在 blocked。
 
 ```text
 /goal Close N complete milestone cycles on CodexSharp. Follow /goal-hop. When hop G would block, follow docs/agents/milestone-cycle.md. Grilling uses Council in that file.
