@@ -242,7 +242,7 @@ M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder
 
 ## Current cycle
 
-C12 TERM-04 — implementing. Destination: Goal Named cycle C12 — TERM-04 on the C10 shell. Map: [[C12] TERM-04 worktree setup](https://github.com/Skymly/CodexSharp/issues/166). Spec: [[C12] Spec: TERM-04 worktree setup](https://github.com/Skymly/CodexSharp/issues/169) — not ready-for-agent. S1 [[C12][TERM-04] Gate worktree setup script](https://github.com/Skymly/CodexSharp/issues/168) — [PR 171](https://github.com/Skymly/CodexSharp/pull/171). Do not pre-write docs/DESKTOP_C12.md. Do not start C13. MX / section 5.2 WON'T remain out of scope.
+C12 TERM-04 — architecture. Destination: Goal Named cycle C12 — TERM-04 on the C10 shell. Feature: [[C12] TERM-04 worktree setup](https://github.com/Skymly/CodexSharp/issues/166). Spec: [[C12] Spec: TERM-04 worktree setup](https://github.com/Skymly/CodexSharp/issues/169). S1 [[C12][TERM-04] Gate worktree setup script](https://github.com/Skymly/CodexSharp/issues/168) — [PR 171](https://github.com/Skymly/CodexSharp/pull/171). Architecture map: [[C12] Architecture map](https://github.com/Skymly/CodexSharp/issues/172). Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260927-c12.html`. Hop F chart only — no implement children. Do not pre-write docs/DESKTOP_C12.md. Do not start C13. MX / section 5.2 WON'T remain out of scope.
 
 ## Next destinations (if K > 1)
 
