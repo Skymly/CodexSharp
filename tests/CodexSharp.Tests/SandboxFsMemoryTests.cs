@@ -19,6 +19,8 @@ public class WindowsSandboxProtocolTests
         Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
         try
         {
+            var state = Path.Combine(home, "windows-sandbox.json");
+            if (File.Exists(state)) File.Delete(state);
             await using var hosted = InProcessAppServer.Start();
             var client = hosted.Client;
             await client.CallAsync("initialize", new { clientInfo = new { name = "t", title = "t", version = "0" } });
@@ -39,12 +41,53 @@ public class WindowsSandboxProtocolTests
 public class WindowsSandboxSetupTests
 {
     [Fact]
-    public async Task Unelevated_setup_marks_ready_when_job_object_exists()
+    public async Task Windows_sandbox_status_is_not_os_isolation()
     {
         var home = Path.Combine(Path.GetTempPath(), "codexsharp-home-" + Guid.NewGuid().ToString("N"));
+        var previous = Environment.GetEnvironmentVariable("CODEXSHARP_HOME");
         Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
         try
         {
+            Directory.CreateDirectory(home);
+            var elevated = WindowsSandbox.Setup("elevated", null);
+            Assert.Equal("notConfigured", elevated.Status);
+            Assert.DoesNotContain("ready", elevated.Status, StringComparison.OrdinalIgnoreCase);
+
+            if (JobObject.IsAvailable())
+            {
+                var snap = WindowsSandbox.Setup("unelevated", Path.GetTempPath());
+                Assert.Equal(WindowsSandbox.LimitedStatus, snap.Status);
+                Assert.NotEqual("ready", snap.Status);
+                var copy = WindowsSandbox.Describe(snap);
+                Assert.Contains("kill-on-close", copy);
+                Assert.Contains("path policy", copy);
+                Assert.DoesNotContain("ready", copy, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("isolated", copy, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("OS isolation", copy, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("official sandbox", copy, StringComparison.OrdinalIgnoreCase);
+
+                var readyNote = WindowsSandbox.NoteForStatus("ready");
+                Assert.Contains("notConfigured", readyNote, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("OS isolation", readyNote, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("official sandbox", readyNote, StringComparison.OrdinalIgnoreCase);
+
+                var report = DoctorProbe.Run(Path.GetTempPath());
+                var sandbox = report.Checks.Single(c => c.Id == "sandbox");
+                var doctorText = sandbox.Summary + "\n" + string.Join("\n", sandbox.Details);
+                Assert.Contains("windowsSandbox: limited", doctorText);
+                Assert.Equal(DoctorStatus.Ok, sandbox.Status);
+                Assert.DoesNotContain("ready", doctorText, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("isolated", doctorText, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("OS isolation", doctorText, StringComparison.OrdinalIgnoreCase);
+            }
+            else
+            {
+                var missing = WindowsSandbox.Setup("unelevated", Path.GetTempPath());
+                Assert.Equal("notConfigured", missing.Status);
+            }
+
+            var state = Path.Combine(home, "windows-sandbox.json");
+            if (File.Exists(state)) File.Delete(state);
             await using var hosted = InProcessAppServer.Start();
             var session = new AppServerSession(hosted.Client);
             await session.InitializeAsync();
@@ -52,31 +95,33 @@ public class WindowsSandboxSetupTests
             Assert.Equal("notConfigured", before.GetProperty("status").GetString());
             var started = await session.SetupWindowsSandboxAsync("unelevated", Path.GetTempPath());
             Assert.True(started.GetProperty("started").GetBoolean());
+            Assert.NotEqual("ready", started.GetProperty("status").GetString());
             var deadline = DateTime.UtcNow.AddSeconds(3);
             JsonElement after = default;
             while (DateTime.UtcNow < deadline)
             {
                 after = await session.WindowsSandboxReadinessAsync();
-                if (after.GetProperty("status").GetString() == "ready") break;
+                var status = after.GetProperty("status").GetString();
+                if (status is "limited" or "notConfigured") break;
                 await Task.Delay(20);
             }
+
+            Assert.NotEqual("ready", after.GetProperty("status").GetString());
             if (JobObject.IsAvailable())
             {
-                Assert.Equal("ready", after.GetProperty("status").GetString());
+                Assert.Equal("limited", after.GetProperty("status").GetString());
+                Assert.Equal("jobObject-kill-on-close", after.GetProperty("implementation").GetString());
                 Assert.True(after.GetProperty("jobObject").GetBoolean());
+                Assert.Equal("limited", started.GetProperty("status").GetString());
             }
             else
             {
                 Assert.Equal("notConfigured", after.GetProperty("status").GetString());
             }
-
-            var elevated = WindowsSandbox.Setup("elevated", null);
-            Assert.Equal("notConfigured", elevated.Status);
-            Assert.Contains("not shipped", elevated.Error);
         }
         finally
         {
-            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", null);
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", previous);
         }
     }
 }
@@ -444,7 +489,8 @@ public class WorkspaceWritePathPolicyTests
             await session.InitializeAsync();
             var chrome = await session.LoadChromeAsync();
             Assert.Contains("workspace-write", chrome.SandboxNote, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("not an OS elevated sandbox", chrome.SandboxNote, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("not an OS sandbox", chrome.SandboxNote, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("ready", chrome.SandboxNote, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("elevated sandbox enabled", chrome.SandboxNote, StringComparison.OrdinalIgnoreCase);
         }
         finally

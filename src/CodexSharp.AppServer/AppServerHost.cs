@@ -3308,7 +3308,7 @@ public sealed class AppServerHost
             case "windowsSandbox/readiness":
             {
                 var snap = WindowsSandbox.Read();
-                Result(id, new { status = snap.Status, jobObject = snap.JobObject, mode = snap.Mode, implementation = snap.Status == "ready" ? "jobObject-kill-on-close" : "notConfigured" });
+                Result(id, new { status = snap.Status, jobObject = snap.JobObject, mode = snap.Mode, implementation = snap.Status == WindowsSandbox.LimitedStatus ? "jobObject-kill-on-close" : "notConfigured" });
                 break;
             }
 
@@ -3325,7 +3325,7 @@ public sealed class AppServerHost
                 try
                 {
                     var snap = WindowsSandbox.Setup(mode, cwd);
-                    var ok = snap.Status == "ready";
+                    var ok = snap.Status == WindowsSandbox.LimitedStatus;
                     Notify("windowsSandbox/setupCompleted", new { mode, success = ok, error = snap.Error });
                     Result(id, new
                     {
