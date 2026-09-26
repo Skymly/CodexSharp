@@ -3084,7 +3084,7 @@ public sealed class AppServerHost
                 var gateCall = new ToolCallRequest("gate", "exec_command", JsonSerializer.Serialize(new { command = string.Join(' ', argv) }));
                 var capturedId = id.Clone();
                 var capturedHasId = hasId;
-                if (ToolApproval.needsApproval(cfg, gateCall) && gateSession is null)
+                if (CommandExecNeedsPrompt(cfg, argv) && gateSession is null)
                 {
                     Result(id, new { started = false, status = "denied", output = "Approval denied: no session approver", isError = false });
                     break;
@@ -3095,7 +3095,7 @@ public sealed class AppServerHost
                 {
                     try
                     {
-                        if (ToolApproval.needsApproval(cfg, gateCall))
+                        if (CommandExecNeedsPrompt(cfg, argv))
                         {
                             var denied = await DenyReasonAsync(sessionForGate!, gateCall, ct);
                             if (denied is not null)
@@ -3605,6 +3605,16 @@ public sealed class AppServerHost
         }
 
         return false;
+    }
+
+    private static bool CommandExecNeedsPrompt(CodexConfig cfg, IReadOnlyList<string> argv)
+    {
+        if (string.Equals(cfg.ApprovalPolicy, "never", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return ExecPolicy.Evaluate(string.Join(' ', argv), cfg.Cwd) == ExecDecision.Prompt;
     }
 
     private static async Task<string?> DenyReasonAsync(CodexSession session, ToolCallRequest call, CancellationToken ct)
