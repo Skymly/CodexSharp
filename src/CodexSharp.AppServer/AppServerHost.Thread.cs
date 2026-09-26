@@ -462,14 +462,14 @@ public sealed partial class AppServerHost
             try
             {
                 var tree = WorktreeSession.Create(cwd);
-                var setup = LocalEnvSetup.Run(tree.SourceRoot, tree.Cwd);
                 var config = ConfigService.Load(tree.Cwd);
+                var setup = LocalEnvSetup.Run(tree.SourceRoot, tree.Root, tree.Cwd, config);
                 var session = CodexSession.Start(config, "worktree");
                 ThreadSources.Set(session.Thread.Id, "worktree");
                 WorktreeBindings.Bind(session.Thread.Id, tree);
                 Wire(session);
                 _threads[session.Thread.Id] = session;
-                if (setup.Ran && !setup.Ok)
+                if (!setup.Ok)
                 {
                     var log = "setup script failed: " + setup.ScriptPath + Environment.NewLine + setup.Log;
                     new JsonlThreadStore().AppendEvent(session.Thread.Id, AgentEvent.NewWarning(log));
