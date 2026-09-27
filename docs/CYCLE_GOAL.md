@@ -6,7 +6,7 @@
 
 ## K = 1 — 收口当前这一轮
 
-当前实况（见 `docs/agents/cycle-status.md`）：C13 已 accepted。活动 Goal 点名 C14（K = 1）。C14 已开票，未实现。下面的 K = 1 块是上一 Goal 的示例，不是当前指令。不要开始 C15、M3、MX。不要预先写 docs/DESKTOP_C14.md。
+当前实况（见 `docs/agents/cycle-status.md`）：C14 已 accepted。活动 Goal 点名 C14（K = 1）。不要在 retro 同一跳开始 C15。下面的 K = 1 块是上一 Goal 的示例，不是当前指令。不要开始 C15、M3、MX。不要预先写 docs/DESKTOP_C14.md。
 
 ```text
 /goal Close 1 complete milestone cycle on CodexSharp. Follow /goal-hop. When hop G would block, follow docs/agents/milestone-cycle.md. Grilling uses Council in that file.

@@ -276,11 +276,28 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Change later (not this cycle): a shell process can still read auth.json because this host has no OS isolation; fs/writeFile and /apply stay ungated; IsHomeSecret is filename-based.
   - Do not: reopen #185/#193; add a command-substring blacklist; gate fs/writeFile or /apply; add a policy type or TurnDiffTracker; mint terminal/* RPC or TerminalHost; implement TERM-05/06; claim OS isolation; start C14 in the same hop as this retro; Electron; steal codex://.
 - Verification: feature PR 187 and architecture PR 195 green on windows-latest. No open ready-for-agent. Write_policy_prompt_requests_approval_and_does_not_write, Patch_policy_prompt_requests_approval_and_does_not_apply, Never_policy_can_write_and_copy_does_not_say_denied, and Denied_apply_patch_is_not_published_as_diff exist and do not use a live model. Index tickets #182, #184, #188, and #192 closed after the slice was already on master (retro PR 196). #185 and #193 stay closed.
+### C14 TERM-05 project actions — accepted
+
+- Destination: Goal Named cycle C14 — actions from project `.codexsharp/actions.toml` run in the current integrated terminal
+- Feature:
+  - No wayfinder map. The Goal named the slice.
+  - S1 [[C14][TERM-05] Run project actions in the current terminal](https://github.com/Skymly/CodexSharp/issues/197) — [PR 199](https://github.com/Skymly/CodexSharp/pull/199)
+- Architecture:
+  - Map: [[C14] Architecture map](https://github.com/Skymly/CodexSharp/issues/200)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260927-c14.html`
+  - [Keep the action failure note in MainView; empty architecture pool](https://github.com/Skymly/CodexSharp/issues/202) — keep execFailed and failureNote in MainView; keep the running-tab refusal Desktop-local; no TerminalHost; empty implement pool
+  - Spec: [[C14] Architecture spec: no implement slices](https://github.com/Skymly/CodexSharp/issues/204) — S1-Sn empty; no ready-for-agent debt
+- Retro:
+  - Went well: actions come only from project `.codexsharp/actions.toml`, each item label and command; a missing file or no actions hides the buttons and does not toast success; a click runs in the current integrated terminal through existing StartStreamingExecAsync / command/exec; ToolApproval.needsApproval and WorkspaceSandbox path and secret checks run before start; an unapproved or rejected command does not start and is not reported as success; failure text stays in the terminal; Council replaced HITL; empty architecture pool is legal; did not pre-write docs/DESKTOP_C14.md.
+  - Keep: ProjectActions as the catalog and gate; MainView as the thin terminal adapter; DesktopTerminalTabs I/O-free; command/exec ExecPolicy Prompt only; ToolApproval as the F# gate; fake IModelClient; workspace-write; Avalonia.FuncUI.
+  - Change later (not this cycle): a shell process can still read auth.json because this host has no OS isolation; IsHomeSecret is filename-based; a previous Status string can remain while the terminal shows the failure; Git Bash and WSL stay out.
+  - Do not: reopen #197; mint TerminalHost or terminal/* RPC; add a command-substring blacklist; gate fs/writeFile or /apply; claim OS isolation; implement TERM-06 or a hotkey; start C15 in the same hop as this retro; Electron; steal codex://.
+- Verification: feature PR 199 green on windows-latest. Architecture pool empty; spec PR 205 records S1-Sn empty. No open ready-for-agent. Actions_hidden_when_config_missing, Action_click_runs_command_in_current_terminal, and Action_command_does_not_bypass_approval exist and do not use a live model.
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-C14 TERM-05 project actions — architecture spec. Destination: Goal Named cycle C14 — actions from project `.codexsharp/actions.toml` run in the current integrated terminal. Feature S1: [[C14][TERM-05] Run project actions in the current terminal](https://github.com/Skymly/CodexSharp/issues/197) — [PR 199](https://github.com/Skymly/CodexSharp/pull/199). Architecture map: [[C14] Architecture map](https://github.com/Skymly/CodexSharp/issues/200). Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260927-c14.html`. [Keep the action failure note in MainView; empty architecture pool](https://github.com/Skymly/CodexSharp/issues/202) resolved. Spec: [[C14] Architecture spec: no implement slices](https://github.com/Skymly/CodexSharp/issues/204) — S1-Sn empty; no ready-for-agent. Do not mint a second set. Do not pre-write docs/DESKTOP_C14.md. Do not start C15, M3, or MX. MX / section 5.2 WON'T remain out of scope.
+None. C14 is accepted. Do not start C15 in this hop. MX / section 5.2 WON'T remain out of scope.
 
 Acceptance gate, not a new cycle: `./build.ps1 Test` on `6def8f1` was red. Windows CI hit a sharing violation creating `config.toml` (EnsureLayout wrote it without the retry already used by WriteConfigText). The local run failed `Prefers_visual_and_round_trips_draft` because `python` is the Windows Store stub. The gate fix retries that create under the existing config lock, and the editor test uses `edit.cmd`. Not C13.
 
