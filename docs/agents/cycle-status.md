@@ -257,11 +257,30 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Change later (not this cycle): an allowed setup process can still read auth.json because this host has no OS isolation; IsHomeSecret is filename-based; write_file/apply_patch on-request still does not prompt; Git Bash and WSL stay out.
   - Do not: reopen #168/#176; fold ShellExecutor; add a SetupPolicy type; mint terminal/* RPC or TerminalHost; implement TERM-05/06; add a permanent worktree or cloud success; start C13 in the same hop as this retro; Electron; steal codex://.
 - Verification: feature PR 171 and architecture PR 179 green on windows-latest. No open ready-for-agent. Unapproved_setup_script_does_not_start_or_report_success and Not_started_warning_does_not_say_failed exist and do not use a live model.
+### C13 write_file and apply_patch on-request — accepted
+
+- Destination: Goal Named cycle C13 — on-request write_file and apply_patch enter the existing approval path
+- Feature:
+  - Map: [[C13] write_file and apply_patch on-request](https://github.com/Skymly/CodexSharp/issues/182)
+  - Spec: [[C13] Spec: write_file and apply_patch on-request](https://github.com/Skymly/CodexSharp/issues/184)
+  - S1 [[C13] Gate write_file and apply_patch on-request](https://github.com/Skymly/CodexSharp/issues/185) — [PR 187](https://github.com/Skymly/CodexSharp/pull/187)
+- Architecture:
+  - Map: [[C13] Architecture map](https://github.com/Skymly/CodexSharp/issues/188)
+  - Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260927-c13.html`
+  - [Do not publish a denied apply_patch as a diff; one architecture slice](https://github.com/Skymly/CodexSharp/issues/190) — skip Current.Diff and the ItemCompleted turn/diff/updated notify when status is denied; keep the timeline item; do not string-match the denial text; do not suppress the TurnCompleted git notify; no new type; no ToolApproval change
+  - Spec: [[C13] Architecture spec: denied apply_patch is not a diff](https://github.com/Skymly/CodexSharp/issues/192)
+  - S1 [[C13] Do not publish a denied apply_patch as a diff](https://github.com/Skymly/CodexSharp/issues/193) — [PR 195](https://github.com/Skymly/CodexSharp/pull/195)
+- Retro:
+  - Went well: on-request write_file and apply_patch enter ToolApproval.needsApproval before the shell substring branch; an unapproved call does not write and is status denied, not a tool error; approval never still writes; prompt, doctor, and settings do not say denied; a denied apply_patch is not published as the diff; Council replaced HITL; did not pre-write docs/DESKTOP_C13.md.
+  - Keep: ToolApproval as the F# gate; the separate Untrusted and OnRequest arms; Never returns false first; item/tool/call denial without isError; the TurnCompleted git notify; fake IModelClient; workspace-write; Avalonia.FuncUI.
+  - Change later (not this cycle): a shell process can still read auth.json because this host has no OS isolation; fs/writeFile and /apply stay ungated; IsHomeSecret is filename-based.
+  - Do not: reopen #185/#193; add a command-substring blacklist; gate fs/writeFile or /apply; add a policy type or TurnDiffTracker; mint terminal/* RPC or TerminalHost; implement TERM-05/06; claim OS isolation; start C14 in the same hop as this retro; Electron; steal codex://.
+- Verification: feature PR 187 and architecture PR 195 green on windows-latest. No open ready-for-agent. Write_policy_prompt_requests_approval_and_does_not_write, Patch_policy_prompt_requests_approval_and_does_not_apply, Never_policy_can_write_and_copy_does_not_say_denied, and Denied_apply_patch_is_not_published_as_diff exist and do not use a live model.
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-C13 write_file and apply_patch on-request — architecture implementing. Destination: Goal Named cycle C13 — on-request write_file and apply_patch enter the existing approval path. Feature: [[C13] write_file and apply_patch on-request](https://github.com/Skymly/CodexSharp/issues/182). Spec: [[C13] Spec: write_file and apply_patch on-request](https://github.com/Skymly/CodexSharp/issues/184). S1 [[C13] Gate write_file and apply_patch on-request](https://github.com/Skymly/CodexSharp/issues/185) — [PR 187](https://github.com/Skymly/CodexSharp/pull/187). Architecture map: [[C13] Architecture map](https://github.com/Skymly/CodexSharp/issues/188). Chart: `C:/Users/98217/AppData/Local/Temp/architecture-review-20260927-c13.html`. [Do not publish a denied apply_patch as a diff; one architecture slice](https://github.com/Skymly/CodexSharp/issues/190) resolved. Architecture spec: [[C13] Architecture spec: denied apply_patch is not a diff](https://github.com/Skymly/CodexSharp/issues/192) — not ready-for-agent. Architecture S1 [[C13] Do not publish a denied apply_patch as a diff](https://github.com/Skymly/CodexSharp/issues/193) — [PR 195](https://github.com/Skymly/CodexSharp/pull/195). No new diff type. No ToolApproval change. Do not pre-write docs/DESKTOP_C13.md. Do not start C14. MX / section 5.2 WON'T remain out of scope.
+None. C13 is accepted. Do not start C14 in this hop. MX / section 5.2 WON'T remain out of scope.
 
 Acceptance gate, not a new cycle: `./build.ps1 Test` on `6def8f1` was red. Windows CI hit a sharing violation creating `config.toml` (EnsureLayout wrote it without the retry already used by WriteConfigText). The local run failed `Prefers_visual_and_round_trips_draft` because `python` is the Windows Store stub. The gate fix retries that create under the existing config lock, and the editor test uses `edit.cmd`. Not C13.
 
