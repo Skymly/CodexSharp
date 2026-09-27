@@ -261,7 +261,7 @@ M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder
 
 ## Current cycle
 
-C13 write_file and apply_patch on-request — charting. Destination: Goal Named cycle C13 — on-request write_file and apply_patch enter the existing approval path. Map: [[C13] write_file and apply_patch on-request](https://github.com/Skymly/CodexSharp/issues/182). No child tickets; hop D mints the only slice. Do not pre-write docs/DESKTOP_C13.md. Do not start C14. MX / section 5.2 WON'T remain out of scope.
+C13 write_file and apply_patch on-request — implementing. Destination: Goal Named cycle C13 — on-request write_file and apply_patch enter the existing approval path. Map: [[C13] write_file and apply_patch on-request](https://github.com/Skymly/CodexSharp/issues/182). Spec: [[C13] Spec: write_file and apply_patch on-request](https://github.com/Skymly/CodexSharp/issues/184) — not ready-for-agent. S1 [[C13] Gate write_file and apply_patch on-request](https://github.com/Skymly/CodexSharp/issues/185) ready-for-agent, unblocked. Do not pre-write docs/DESKTOP_C13.md. Do not start C14. MX / section 5.2 WON'T remain out of scope.
 
 Acceptance gate, not a new cycle: `./build.ps1 Test` on `6def8f1` was red. Windows CI hit a sharing violation creating `config.toml` (EnsureLayout wrote it without the retry already used by WriteConfigText). The local run failed `Prefers_visual_and_round_trips_draft` because `python` is the Windows Store stub. The gate fix retries that create under the existing config lock, and the editor test uses `edit.cmd`. Not C13.
 
