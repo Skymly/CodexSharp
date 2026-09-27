@@ -223,7 +223,7 @@ Rules:
             match approval with
             | Never -> "Do not ask the user to approve commands; the host will auto-allow or auto-deny."
             | Untrusted -> "Ask for approval before every shell command and every write."
-            | OnRequest -> "Ask for approval when a command needs network, writes outside the workspace, or looks destructive."
+            | OnRequest -> "Ask for approval when a command needs network, writes outside the workspace, or looks destructive. write_file and apply_patch require approval."
 
         $"""{CodexTags.PermissionsOpen}
 Sandbox: {SandboxMode.toWire sandbox}

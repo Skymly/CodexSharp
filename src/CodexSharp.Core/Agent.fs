@@ -62,7 +62,7 @@ module ToolApproval =
             | Untrusted ->
                 call.Name = "shell" || call.Name = "write_file" || call.Name = "apply_patch" || call.Name = "request_permissions" || call.Name = "exec_command"
             | OnRequest ->
-                if call.Name = "request_permissions" then true
+                if call.Name = "request_permissions" || call.Name = "write_file" || call.Name = "apply_patch" then true
                 elif not shellish then false
                 else
                     match sandbox with
