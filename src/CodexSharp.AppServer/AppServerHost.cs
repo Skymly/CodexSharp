@@ -32,6 +32,10 @@ public sealed partial class AppServerHost
         _output = output ?? Console.Out;
     }
 
+    public static bool PublishesItemDiff(ConversationItem item) =>
+        !string.Equals(item.Status, "denied", StringComparison.Ordinal)
+        && (item.Kind is "file_change" || item.ToolName is "apply_patch");
+
     public async Task RunAsync(CancellationToken ct = default)
     {
         while (!ct.IsCancellationRequested)
@@ -858,7 +862,7 @@ public sealed partial class AppServerHost
                         Notify("item/plan/delta", new { itemId = item.Item.Id, delta = item.Item.Text });
                         Notify("turn/plan/updated", new { threadId = session.Thread.Id, plan = item.Item.Text });
                     }
-                    if (item.Item.Kind is "file_change" || item.Item.ToolName is "apply_patch")
+                    if (PublishesItemDiff(item.Item))
                     {
                         Notify("turn/diff/updated", new { threadId = session.Thread.Id, diff = item.Item.Text });
                     }

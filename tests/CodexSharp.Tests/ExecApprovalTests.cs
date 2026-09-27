@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CodexSharp.AppServer;
 using CodexSharp.Core;
 using CodexSharp.Protocol;
 using CodexSharp.Runtime;
@@ -194,6 +195,38 @@ public class ExecApprovalTests
             var joined = string.Join("\n", sandbox.Details) + "\n" + sandbox.Summary;
             Assert.DoesNotContain("denied", joined, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("denied", WindowsSandbox.Describe(), StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CODEXSHARP_HOME", previousHome);
+            try { Directory.Delete(root, true); } catch { /* ignore */ }
+        }
+    }
+
+    [Fact]
+    public async Task Denied_apply_patch_is_not_published_as_diff()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "codexsharp-c13-diff-" + Guid.NewGuid().ToString("N"));
+        var home = Path.Combine(root, "home");
+        var cwd = Path.Combine(root, "workspace");
+        var previousHome = Environment.GetEnvironmentVariable("CODEXSHARP_HOME");
+        Environment.SetEnvironmentVariable("CODEXSHARP_HOME", home);
+        try
+        {
+            Directory.CreateDirectory(home);
+            Directory.CreateDirectory(cwd);
+            var patch = "*** Begin Patch\n*** Add File: notes.md\n+hi\n*** End Patch\n".Replace("\\n", "\n");
+            var args = JsonSerializer.Serialize(new { patch });
+            var denied = await RunTool(cwd, "on-request", "apply_patch", args, allow: false);
+            var completed = denied.Events.OfType<AgentEvent.ItemCompleted>().Single(e => e.Item.ToolName == "apply_patch");
+            Assert.Equal("denied", completed.Item.Status);
+            Assert.Equal("file_change", completed.Item.Kind);
+            Assert.False(AppServerHost.PublishesItemDiff(completed.Item));
+
+            var applied = new ConversationItem("i", "file_change", "diff", "completed", "", "", "apply_patch", "c");
+            Assert.True(AppServerHost.PublishesItemDiff(applied));
+            var blocked = new ConversationItem("h", "file_change", "Hook blocked: no", "denied", "", "", "apply_patch", "h");
+            Assert.False(AppServerHost.PublishesItemDiff(blocked));
         }
         finally
         {
