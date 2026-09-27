@@ -223,7 +223,9 @@ module MainView =
                 if item.Kind = "plan_update" || item.ToolName = "update_plan" then item.Text
                 elif not (isNull extracted) then extracted
                 else state.Current.Plan
-            let diff = if item.Kind = "file_change" || item.ToolName = "apply_patch" then item.Text else state.Current.Diff
+            let diff =
+                if item.Status <> "denied" && (item.Kind = "file_change" || item.ToolName = "apply_patch") then item.Text
+                else state.Current.Diff
             let urls = ImageUrlCache.ExtractRemoteUrls(item.Text) |> Seq.toList
             let pending =
                 urls
