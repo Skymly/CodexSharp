@@ -716,6 +716,68 @@ module MainView =
                         popWin <- Some w
                         w.Show()
 
+            let projectRoot () =
+                match state.Current.Projects |> List.tryFind (fun p -> p.Id = state.Current.SelectedProject) with
+                | Some p -> p.Root
+                | None -> ""
+
+            let runProjectAction (command: string) =
+                let pid = state.Current.TermTabs.Active.Id
+                let show (text: string) =
+                    state.Set
+                        { state.Current with
+                            TermTabs = state.Current.TermTabs.AppendDelta(pid, text)
+                            ShowTerminal = true
+                            Status = state.Current.Status }
+                if state.Current.TermTabs.Active.Running then
+                    show "terminal busy; action was not started\n"
+                else
+                    try
+                        let root = projectRoot ()
+                        let cfg = if String.IsNullOrWhiteSpace root then ConfigService.Load() else ConfigService.Load(root)
+                        let mutable startedEl = Unchecked.defaultof<JsonElement>
+                        let mutable exitEl = Unchecked.defaultof<JsonElement>
+                        let execFailed (result: JsonElement) =
+                            let notStarted =
+                                result.ValueKind = JsonValueKind.Object
+                                && result.TryGetProperty("started", &startedEl)
+                                && startedEl.ValueKind = JsonValueKind.False
+                            jsBool result "isError" || jsStr result "status" = "denied" || notStarted
+                        let failureNote (result: JsonElement) =
+                            let output = jsStr result "output"
+                            if not (String.IsNullOrWhiteSpace output) then output.TrimEnd() + "\n"
+                            elif result.TryGetProperty("exitCode", &exitEl) && exitEl.ValueKind = JsonValueKind.Number then
+                                "command exited " + exitEl.GetInt32().ToString() + "\n"
+                            else
+                                "command exited non-zero\n"
+                        let starter =
+                            Action<string, IReadOnlyList<string>>(fun processId argv ->
+                                let next = state.Current.TermTabs.PrepareRun(command)
+                                state.Set { state.Current with TermTabs = next; ShowTerminal = true; Status = state.Current.Status }
+                                async {
+                                    try
+                                        let! result = session.StartStreamingExecAsync(processId, argv) |> Async.AwaitTask
+                                        let note = if execFailed result then failureNote result else ""
+                                        Dispatcher.UIThread.Post(fun () ->
+                                            let tabs =
+                                                if note = "" then state.Current.TermTabs.MarkExited(processId)
+                                                else state.Current.TermTabs.AppendDelta(processId, note).MarkExited(processId)
+                                            state.Set { state.Current with TermTabs = tabs; ShowTerminal = true; Status = state.Current.Status })
+                                    with ex ->
+                                        Dispatcher.UIThread.Post(fun () ->
+                                            state.Set
+                                                { state.Current with
+                                                    TermTabs = state.Current.TermTabs.AppendDelta(processId, ex.Message + "\n").MarkExited(processId)
+                                                    ShowTerminal = true
+                                                    Status = state.Current.Status })
+                                }
+                                |> Async.Start)
+                        let click = ProjectActions.Click(state.Current.TermTabs, root, Environment.CurrentDirectory, cfg, command, starter)
+                        if not click.Started then
+                            show click.TerminalText
+                    with ex ->
+                        show (ex.Message + "\n")
+
             let refreshChrome () = DesktopChrome.refreshChrome session state modelDraft
             let applyGoalPayload (el: JsonElement) =
                 let mutable goal = Unchecked.defaultof<JsonElement>
@@ -2465,6 +2527,20 @@ module MainView =
                                             Button.create [
                                                 Button.content "Pop out"
                                                 Button.onClick (fun _ -> openPopout ())
+                                            ]
+                                            StackPanel.create [
+                                                StackPanel.orientation Orientation.Horizontal
+                                                StackPanel.spacing 4.
+                                                StackPanel.verticalAlignment VerticalAlignment.Center
+                                                StackPanel.isVisible (ProjectActions.Load(projectRoot ()).Buttons.Count > 0)
+                                                StackPanel.children (
+                                                    ProjectActions.Load(projectRoot ()).Buttons
+                                                    |> Seq.map (fun action ->
+                                                        Button.create [
+                                                            Button.content action.Label
+                                                            Button.onClick (fun _ -> runProjectAction action.Command)
+                                                        ] :> IView)
+                                                    |> Seq.toList)
                                             ]
                                             TextBlock.create [
                                                 TextBlock.text (
