@@ -275,12 +275,12 @@ K is owned by the active Goal, not this file. Hops update this file; they do not
   - Keep: ToolApproval as the F# gate; the separate Untrusted and OnRequest arms; Never returns false first; item/tool/call denial without isError; the TurnCompleted git notify; fake IModelClient; workspace-write; Avalonia.FuncUI.
   - Change later (not this cycle): a shell process can still read auth.json because this host has no OS isolation; fs/writeFile and /apply stay ungated; IsHomeSecret is filename-based.
   - Do not: reopen #185/#193; add a command-substring blacklist; gate fs/writeFile or /apply; add a policy type or TurnDiffTracker; mint terminal/* RPC or TerminalHost; implement TERM-05/06; claim OS isolation; start C14 in the same hop as this retro; Electron; steal codex://.
-- Verification: feature PR 187 and architecture PR 195 green on windows-latest. No open ready-for-agent. Write_policy_prompt_requests_approval_and_does_not_write, Patch_policy_prompt_requests_approval_and_does_not_apply, Never_policy_can_write_and_copy_does_not_say_denied, and Denied_apply_patch_is_not_published_as_diff exist and do not use a live model.
+- Verification: feature PR 187 and architecture PR 195 green on windows-latest. No open ready-for-agent. Write_policy_prompt_requests_approval_and_does_not_write, Patch_policy_prompt_requests_approval_and_does_not_apply, Never_policy_can_write_and_copy_does_not_say_denied, and Denied_apply_patch_is_not_published_as_diff exist and do not use a live model. Index tickets #182, #184, #188, and #192 closed after the slice was already on master (retro PR 196). #185 and #193 stay closed.
 M0/M1/M2 **feature** slices shipped as ordinary Goal slices — not as wayfinder cycles. Do not reopen them. Do not count those feature slices or M2 toward this Goal's K.
 
 ## Current cycle
 
-None. C13 is accepted. Do not start C14 in this hop. MX / section 5.2 WON'T remain out of scope.
+C14 TERM-05 project actions — ticketed. Destination: Goal Named cycle C14 — actions from project `.codexsharp/actions.toml` run in the current integrated terminal. No wayfinder map; the Goal named the slice. S1: [[C14][TERM-05] Run project actions in the current terminal](https://github.com/Skymly/CodexSharp/issues/197) is ready-for-agent and unblocked. Do not mint a second set. Do not pre-write docs/DESKTOP_C14.md. Do not start C15, M3, or MX. MX / section 5.2 WON'T remain out of scope.
 
 Acceptance gate, not a new cycle: `./build.ps1 Test` on `6def8f1` was red. Windows CI hit a sharing violation creating `config.toml` (EnsureLayout wrote it without the retry already used by WriteConfigText). The local run failed `Prefers_visual_and_round_trips_draft` because `python` is the Windows Store stub. The gate fix retries that create under the existing config lock, and the editor test uses `edit.cmd`. Not C13.
 
