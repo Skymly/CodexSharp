@@ -37,3 +37,8 @@ TestResults/
 
 # NUKE
 .nuke/temp/
+
+# Local scratch directories
+.scratch/
+.Local/
+.Temp/
