@@ -1,5 +1,7 @@
 # CodexSharp
 
+**English** | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md)
+
 C# + F# + .NET 10 recreation of the Codex **harness**: a local coding agent with an interactive CLI, a JSON-RPC app server, and a desktop app.
 
 This is an independent implementation inspired by the public Codex architecture (agent loop, threads/turns/items, app-server JSON-RPC, sandbox + approvals). It is **not** the official OpenAI Codex CLI or Desktop app.
