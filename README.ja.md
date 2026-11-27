@@ -2,16 +2,11 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | **日本語**
 
+[![CI](https://github.com/Skymly/CodexSharp/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Skymly/CodexSharp/actions/workflows/ci.yml)
+
 C# + F# + .NET 10 による Codex **harness** の再実装。対話型 CLI、JSON-RPC App Server、およびデスクトップアプリを備えたローカルコーディングエージェントです。
 
 これは公開されている Codex アーキテクチャ（agent loop、threads/turns/items、app-server JSON-RPC、sandbox と approvals）に着想を得た独立実装であり、公式の OpenAI Codex CLI や Desktop アプリでは**ありません**。
-
-公式クレートと本リポジトリの対応一覧は `docs/SOURCE_MAP.md` を参照してください。  
-デスクトップ機能のベースラインと CodexSharp（ChatGPT 26.901）の比較は `docs/DESKTOP_REQUIREMENTS.md` を参照してください。
-
-## 上流ソース
-
-公式 Codex は `vendor/codex`（https://github.com/openai/codex）にクローンされます。このクローンは `.gitignore` 対象の参照資料であり、ビルド依存ではありません。
 
 ## 構成
 
@@ -201,6 +196,12 @@ args = ["-y", "mcp-server"]
 ## テスト
 
 `dotnet test` でハーネススイートを実行します（フェイクの `IModelClient` を使用し、エージェントループ内で実ネットワーク通信は行いません）。テストは領域別に `tests/CodexSharp.Tests/` 配下に分類されています。
+
+## 参考・上流対応状況
+
+- 公式クレートと本リポジトリの対応一覧：[`docs/SOURCE_MAP.md`](docs/SOURCE_MAP.md)
+- デスクトップ機能ベースライン（ChatGPT 26.901）：[`docs/DESKTOP_REQUIREMENTS.md`](docs/DESKTOP_REQUIREMENTS.md)
+- 上流リファレンス（`.gitignore` 対象、ビルド依存なし）：公式 Codex を `vendor/codex`（`https://github.com/openai/codex`）に配置
 
 ## ライセンス
 

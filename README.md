@@ -2,16 +2,11 @@
 
 **English** | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md)
 
+[![CI](https://github.com/Skymly/CodexSharp/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Skymly/CodexSharp/actions/workflows/ci.yml)
+
 C# + F# + .NET 10 recreation of the Codex **harness**: a local coding agent with an interactive CLI, a JSON-RPC app server, and a desktop app.
 
 This is an independent implementation inspired by the public Codex architecture (agent loop, threads/turns/items, app-server JSON-RPC, sandbox + approvals). It is **not** the official OpenAI Codex CLI or Desktop app.
-
-Living inventory of official crates vs this repo: `docs/SOURCE_MAP.md`.
-Desktop capability baseline vs CodexSharp (ChatGPT 26.901): `docs/DESKTOP_REQUIREMENTS.md`.
-
-## Upstream source
-
-Official Codex is cloned to `vendor/codex` (https://github.com/openai/codex). The clone is gitignored reference material, not a build dependency.
 
 ## Layout
 
@@ -201,6 +196,12 @@ Official protocol schema codegen, voice/WebRTC sessions, hosted multi-agent, and
 ## Tests
 
 `dotnet test` runs the harness suite (fake `IModelClient`, no live network in the agent loop). Tests are grouped by area under `tests/CodexSharp.Tests/`.
+
+## Reference & Upstream
+
+- Crate inventory vs this repo: [`docs/SOURCE_MAP.md`](docs/SOURCE_MAP.md)
+- Desktop capability baseline (ChatGPT 26.901): [`docs/DESKTOP_REQUIREMENTS.md`](docs/DESKTOP_REQUIREMENTS.md)
+- Upstream reference material (gitignored, not a build dependency): official Codex cloned under `vendor/codex` (`https://github.com/openai/codex`)
 
 ## License
 

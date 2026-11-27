@@ -2,16 +2,11 @@
 
 [English](README.md) | **简体中文** | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md)
 
+[![CI](https://github.com/Skymly/CodexSharp/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Skymly/CodexSharp/actions/workflows/ci.yml)
+
 基于 C# + F# + .NET 10 实现的 Codex **harness**：包含交互式 CLI、JSON-RPC App Server 与桌面应用的本地编码智能体。
 
 这是一个受公开 Codex 架构（agent loop、threads/turns/items、app-server JSON-RPC、sandbox 与 approvals）启发的独立实现，**并非**官方 OpenAI Codex CLI 或 Desktop 应用。
-
-官方 crate 与本仓库的持续对齐清单见 `docs/SOURCE_MAP.md`。  
-桌面端能力基线与 CodexSharp（ChatGPT 26.901）对比见 `docs/DESKTOP_REQUIREMENTS.md`。
-
-## 上游源码
-
-官方 Codex 克隆位于 `vendor/codex`（https://github.com/openai/codex）。该克隆仅作为受 `.gitignore` 忽略的参考资料，不是构建依赖。
 
 ## 仓库结构
 
@@ -201,6 +196,12 @@ args = ["-y", "mcp-server"]
 ## 测试
 
 `dotnet test` 运行测试套件（使用伪造的 `IModelClient`，Agent 循环不访问真实网络）。测试按领域分组在 `tests/CodexSharp.Tests/` 下。
+
+## 参考与上游对齐
+
+- 官方 crate 与本仓库的持续对齐清单：[`docs/SOURCE_MAP.md`](docs/SOURCE_MAP.md)
+- 桌面端能力基线（ChatGPT 26.901）：[`docs/DESKTOP_REQUIREMENTS.md`](docs/DESKTOP_REQUIREMENTS.md)
+- 上游参考资料（已列入 `.gitignore`，非构建依赖）：官方 Codex 克隆位于 `vendor/codex`（`https://github.com/openai/codex`）
 
 ## 许可
 
