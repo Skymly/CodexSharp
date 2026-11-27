@@ -2,16 +2,11 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md) | **繁體中文** | [日本語](README.ja.md)
 
+[![CI](https://github.com/Skymly/CodexSharp/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/Skymly/CodexSharp/actions/workflows/ci.yml)
+
 以 C# + F# + .NET 10 重建的 Codex **harness**：包含互動式 CLI、JSON-RPC App Server 與桌面應用程式的本機編碼代理程式。
 
 這是一個受公開 Codex 架構（agent loop、threads/turns/items、app-server JSON-RPC、sandbox 與 approvals）啟發的獨立實作，**並非**官方 OpenAI Codex CLI 或 Desktop 應用程式。
-
-官方 crate 與本儲存庫的持續對齊清單請參閱 `docs/SOURCE_MAP.md`。  
-桌面端能力基線與 CodexSharp（ChatGPT 26.901）比較請參閱 `docs/DESKTOP_REQUIREMENTS.md`。
-
-## 上游原始碼
-
-官方 Codex 複製位於 `vendor/codex`（https://github.com/openai/codex）。該複本僅作為受 `.gitignore` 忽略的參考資料，並非建置相依性。
 
 ## 專案結構
 
@@ -201,6 +196,12 @@ args = ["-y", "mcp-server"]
 ## 測試
 
 `dotnet test` 會執行 harness 測試套件（使用模擬的 `IModelClient`，agent 迴圈不會進行即時網路連線）。測試依領域分組於 `tests/CodexSharp.Tests/` 下。
+
+## 參考與上游對齊
+
+- 官方 crate 與本儲存庫的持續對齊清單：[`docs/SOURCE_MAP.md`](docs/SOURCE_MAP.md)
+- 桌面端能力基線（ChatGPT 26.901）：[`docs/DESKTOP_REQUIREMENTS.md`](docs/DESKTOP_REQUIREMENTS.md)
+- 上游參考資料（已列入 `.gitignore`，非建置相依性）：官方 Codex 複本位於 `vendor/codex`（`https://github.com/openai/codex`）
 
 ## 授權
 
